@@ -21,6 +21,21 @@ make linux-gcc-release64
 
 This will take an insane amount of time. Be aware.
 
+### vulkan
+Compile the shaders to SPIR-V
+```sh
+mkdir -p assets/shaders/spirv
+
+submodules/bgfx/.build/linux64_gcc/bin/shaderc \
+    -f shaders/vs_cube.sc \
+    -o assets/shaders/spirv/vs_cube.bin \
+    --type vertex \
+    --platform linux \
+    -p spirv \
+    -i submodules/bgfx/src \
+    --varyingdef shaders/varying.def.sc
+    ```
+
 Ensure `CMake` and `GLFW` are installed.
 ```sh
 cmake -B build
