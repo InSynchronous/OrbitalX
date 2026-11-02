@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ImGuiRenderer.h"
 #include "Mesh.h"
 #include "Vertex.h"
 #include <GLFW/glfw3.h>
@@ -33,11 +34,14 @@ class Renderer {
     bgfx::UniformHandle sampler;
 
     std::vector<std::unique_ptr<Mesh>> meshes;
+    ImGuiRenderer imguiRenderer;
 
     bgfx::ShaderHandle loadShader(const char *path);
 
     void setupGLFW();
+    void setupImGui();
     void setupBGFX();
+    void renderUI();
     void buildPrograms(std::string shaderDirectory);
 
   public:

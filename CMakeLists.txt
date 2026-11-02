@@ -28,6 +28,24 @@ set_target_properties(bimg PROPERTIES
     IMPORTED_LOCATION "${BGFX_BUILD}/libbimgRelease.a"
 )
 
+# Dear ImGui
+set(IMGUI_ROOT ${CMAKE_SOURCE_DIR}/submodules/imgui)
+
+add_library(imgui STATIC
+    ${IMGUI_ROOT}/imgui.cpp
+    ${IMGUI_ROOT}/imgui_draw.cpp
+    ${IMGUI_ROOT}/imgui_tables.cpp
+    ${IMGUI_ROOT}/imgui_widgets.cpp
+    ${IMGUI_ROOT}/backends/imgui_impl_glfw.cpp
+)
+
+target_include_directories(imgui PUBLIC
+    ${IMGUI_ROOT}
+    ${IMGUI_ROOT}/backends
+)
+
+target_link_libraries(imgui PUBLIC glfw)
+
 set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
 
 # OrbitalX
@@ -54,4 +72,5 @@ target_link_libraries(OrbitalX PRIVATE
     glfw
     dl
     pthread
+    imgui
 )

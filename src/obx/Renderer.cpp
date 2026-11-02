@@ -2,6 +2,8 @@
 #include "bgfx/bgfx.h"
 #include <iostream>
 
+#include "imgui.h"
+#include "imgui_impl_glfw.h"
 #include <fstream>
 #include <iterator>
 #include <memory>
@@ -125,9 +127,26 @@ void obx::Renderer::buildPrograms(std::string shaderDirectory) {
     program = bgfx::createProgram(vertexShader, fragmentShader, true);
 }
 
+void obx::Renderer::setupImGui() {
+    IMGUI_CHECKVERSION();
+    ImGui::CreateContext();
+
+    ImGuiIO &io = ImGui::GetIO();
+    io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+
+    ImGui::StyleColorsDark();
+    ImGuiStyle &style = ImGui::GetStyle();
+
+    ImGui_ImplGlfw_InitForOther(info.window, true);
+}
+
 void obx::Renderer::initialize() {
     this->setupGLFW();
     this->setupBGFX();
+    this->setupImGui();
+
+    imguiRenderer.initialize();
+
     const char *shaderDirectory = nullptr;
 
     switch (bgfx::getRendererType()) {
@@ -165,8 +184,41 @@ void obx::Renderer::loadTexture(const uint8_t *pixels) {
     bgfx::updateTexture2D(atlas, 0, 0, 0, 0, width, height, memory);
 }
 
+void obx::Renderer::renderUI() {
+    ImGui::Begin("OrbitalX Debug");
+
+    ImGui::Text("Performance");
+    ImGui::Separator();
+
+    ImGui::Text("FPS: %.1f", ImGui::GetIO().Framerate);
+    ImGui::Text("Frame time: %.3f ms", 1000.0f / ImGui::GetIO().Framerate);
+
+    ImGui::Spacing();
+    ImGui::Text("Renderer");
+    ImGui::Separator();
+
+    ImGui::Text("Backend: %s", bgfx::getRendererName(bgfx::getRendererType()));
+
+    ImGui::Text("Meshes: %zu", meshes.size());
+
+    ImGui::Spacing();
+    ImGui::Text("Input");
+    ImGui::Separator();
+
+    ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x,
+                ImGui::GetIO().MousePos.y);
+
+    ImGui::End();
+
+    ImGui::Render();
+    imguiRenderer.render(ImGui::GetDrawData());
+}
+
 void obx::Renderer::render() {
     glfwPollEvents();
+
+    ImGui_ImplGlfw_NewFrame();
+    ImGui::NewFrame();
 
     int width, height;
     glfwGetFramebufferSize(info.window, &width, &height);
@@ -209,6 +261,8 @@ void obx::Renderer::render() {
 
         bgfx::submit(0, program);
     }
+
+    this->renderUI();
 
     bgfx::frame();
 }

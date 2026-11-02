@@ -7,3 +7,6 @@
 [submodule "submodules/bimg"]
 	path = submodules/bimg
 	url = https://github.com/bkaradzic/bimg.git
+[submodule "submodules/imgui"]
+	path = submodules/imgui
+	url = https://github.com/ocornut/imgui.git
