@@ -25,7 +25,7 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
             float x, y, z;
             stream >> x >> y >> z;
 
-            vertices.push_back({x, y, z, 1, 1, 1, 1});
+            vertices.push_back({{x, y, z}, 1, 1, 1, 1});
         }
 
         else if (type == "f") {
@@ -71,16 +71,11 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
 
 void obx::ObjMesh::upload() {
     for (auto &vertex : vertices) {
-        vertex.r = position.r;
-        vertex.g = position.g;
-        vertex.b = position.b;
-        vertex.a = position.a;
+        vertex.r = 1;
+        vertex.g = 1;
+        vertex.b = 1;
+        vertex.a = 1;
     }
-
-    layout.begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
-        .end();
 
     vertexBuffer = bgfx::createVertexBuffer(
         bgfx::makeRef(vertices.data(),

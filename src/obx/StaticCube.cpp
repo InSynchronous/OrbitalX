@@ -4,13 +4,8 @@
 void obx::StaticCube::upload() {
 
     for (auto &v : vertices) {
-        v *= scale;
+        v.position = bx::mul(v.position, scale);
     }
-
-    layout.begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
-        .end();
 
     vertexBuffer = bgfx::createVertexBuffer(
         bgfx::makeRef(vertices, sizeof(vertices)), layout);

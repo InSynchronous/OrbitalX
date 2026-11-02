@@ -1,6 +1,8 @@
 #pragma once
 
 #include "Mesh.h"
+#include "Vertex.h"
+#include "bx/math.h"
 #include <cstdint>
 #include <vector>
 
@@ -15,7 +17,7 @@ class SphereMesh : public Mesh {
     int subdivisions;
 
   public:
-    SphereMesh(Vertex position, float subdivisions, float radius)
+    SphereMesh(bx::Vec3 position, float subdivisions, float radius)
         : Mesh{position}, subdivisions(subdivisions), radius(radius) {}
 
     void upload() override;

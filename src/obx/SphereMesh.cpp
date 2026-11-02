@@ -1,4 +1,5 @@
 #include "SphereMesh.h"
+#include "bx/math.h"
 
 #include <bgfx/bgfx.h>
 #include <cmath>
@@ -6,7 +7,7 @@
 
 namespace obx {
 
-static Vertex spherify(float x, float y, float z, float radius) {
+static bx::Vec3 spherify(float x, float y, float z, float radius) {
     const float x2 = x * x;
     const float y2 = y * y;
     const float z2 = z * z;
@@ -20,7 +21,7 @@ static Vertex spherify(float x, float y, float z, float radius) {
     const float sz =
         z * std::sqrt(1.0f - x2 / 2.0f - y2 / 2.0f + x2 * y2 / 3.0f);
 
-    return {sx * radius, sy * radius, sz * radius, 1.0f, 1.0f, 1.0f, 1.0f};
+    return {sx * radius, sy * radius, sz * radius};
 }
 
 void SphereMesh::upload() {
@@ -78,13 +79,13 @@ void SphereMesh::upload() {
                     break;
                 }
 
-                Vertex vertex = spherify(px, py, pz, radius);
+                bx::Vec3 p = spherify(px, py, pz, radius);
 
-                vertex.x += position.x;
-                vertex.y += position.y;
-                vertex.z += position.z;
+                p.x += position.x;
+                p.y += position.y;
+                p.z += position.z;
 
-                vertices.push_back(vertex);
+                vertices.push_back(Vertex(p, 1, 1, 1));
             }
         }
 
@@ -102,12 +103,6 @@ void SphereMesh::upload() {
             }
         }
     }
-
-    bgfx::VertexLayout layout;
-    layout.begin()
-        .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
-        .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
-        .end();
 
     vertexBuffer = bgfx::createVertexBuffer(
         bgfx::copy(vertices.data(),

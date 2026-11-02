@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Mesh.h"
+#include "Vertex.h"
 #include <cstdint>
 #include <string>
 #include <vector>
@@ -16,7 +17,7 @@ class ObjMesh : public Mesh {
     void loadFromObj(const std::string &path);
 
   public:
-    ObjMesh(Vertex position, const std::string &path) : Mesh{position} {
+    ObjMesh(bx::Vec3 position, const std::string &path) : Mesh{position} {
         loadFromObj(path);
     }
 

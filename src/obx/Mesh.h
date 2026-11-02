@@ -1,6 +1,6 @@
 #pragma once
 
-#include "Vertex.h"
+#include "bx/math.h"
 #include <bgfx/bgfx.h>
 namespace obx {
 
@@ -10,12 +10,17 @@ class Mesh {
     bgfx::VertexBufferHandle vertexBuffer;
     bgfx::VertexLayout layout;
 
-    Vertex position;
+    bx::Vec3 position;
 
     friend class Renderer;
 
   public:
-    Mesh(Vertex position) : position(position) {}
+    Mesh(bx::Vec3 position) : position(position) {
+        layout.begin()
+            .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
+            .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Float)
+            .end();
+    }
     virtual void upload() = 0;
 };
 } // namespace obx

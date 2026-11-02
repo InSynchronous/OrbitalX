@@ -1,21 +1,10 @@
 #pragma once
 
+#include "bx/math.h"
 namespace obx {
 struct Vertex {
-    float x, y, z;
+    bx::Vec3 position;
     float r, g, b, a;
-
-    Vertex &operator*=(float scalar) {
-        x *= scalar;
-        y *= scalar;
-        z *= scalar;
-        return *this;
-    }
-    Vertex &operator+=(const Vertex &other) {
-        x += other.x;
-        y += other.y;
-        z += other.z;
-        return *this;
-    }
 };
+
 } // namespace obx
