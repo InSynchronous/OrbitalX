@@ -85,7 +85,10 @@ void SphereMesh::upload() {
                 p.y += position.y;
                 p.z += position.z;
 
-                vertices.push_back(Vertex(p, 1, 1, 1));
+                const float texU = static_cast<float>(x) / resolution;
+                const float texV = static_cast<float>(y) / resolution;
+
+                vertices.push_back(Vertex(p, {texU, texV}));
             }
         }
 

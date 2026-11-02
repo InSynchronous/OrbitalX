@@ -26,7 +26,7 @@ Compile the shaders to SPIR-V
 ```sh
 mkdir -p assets/shaders/spirv
 
-submodules/bgfx/.build/linux64_gcc/bin/shaderc \
+submodules/bgfx/.build/linux64_gcc/bin/shadercRelease \
     -f shaders/vs_cube.sc \
     -o assets/shaders/spirv/vs_cube.bin \
     --type vertex \
@@ -34,7 +34,17 @@ submodules/bgfx/.build/linux64_gcc/bin/shaderc \
     -p spirv \
     -i submodules/bgfx/src \
     --varyingdef shaders/varying.def.sc
-    ```
+
+./submodules/bgfx/.build/linux64_gcc/bin/shadercRelease \
+    -f shaders/fs_cube.sc \
+    -o assets/shaders/spirv/fs_cube.bin \
+    --type fragment \
+    --platform linux \
+    -p spirv \
+    -i submodules/bgfx/src \
+    --varyingdef shaders/varying.def.sc
+
+```
 
 Ensure `CMake` and `GLFW` are installed.
 ```sh

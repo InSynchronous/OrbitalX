@@ -1,10 +1,13 @@
+
 #include "ObjMesh.h"
+#include "Vertex.h"
 
 #include <cassert>
 #include <fstream>
 #include <sstream>
 #include <stdexcept>
 #include <string>
+#include <vector>
 
 void obx::ObjMesh::loadFromObj(const std::string &path) {
     std::ifstream file(path);
@@ -12,6 +15,9 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
     if (!file.is_open()) {
         throw std::runtime_error("Failed to open OBJ file: " + path);
     }
+
+    std::vector<bx::Vec3> positions;
+    std::vector<obx::UVCoord> texCoords;
 
     std::string line;
 
@@ -25,7 +31,14 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
             float x, y, z;
             stream >> x >> y >> z;
 
-            vertices.push_back({{x, y, z}, 1, 1, 1, 1});
+            positions.push_back({x, y, z});
+        }
+
+        else if (type == "vt") {
+            float u, v;
+            stream >> u >> v;
+
+            texCoords.push_back({u, v});
         }
 
         else if (type == "f") {
@@ -35,21 +48,53 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
             while (stream >> token) {
                 // v, v/vt, v//vn, v/vt/vn
 
-                int index = std::stoi(token.substr(0, token.find('/')));
+                std::istringstream indicesStream(token);
+                std::string positionIndex;
+                std::string uvIndex;
 
-                if (index < 0) {
-                    index = static_cast<int>(vertices.size()) + index + 1;
+                std::getline(indicesStream, positionIndex, '/');
+                std::getline(indicesStream, uvIndex, '/');
+
+                int pi = std::stoi(positionIndex);
+
+                if (pi < 0) {
+                    pi = static_cast<int>(positions.size()) + pi + 1;
                 }
 
-                if (index <= 0 || index > static_cast<int>(vertices.size())) {
+                if (pi <= 0 || pi > static_cast<int>(positions.size())) {
                     throw std::runtime_error("Invalid OBJ vertex index");
                 }
 
-                face.push_back(static_cast<uint16_t>(index - 1));
+                obx::UVCoord uv = {0.0f, 0.0f};
+
+                if (!uvIndex.empty()) {
+                    int ti = std::stoi(uvIndex);
+
+                    if (ti < 0) {
+                        ti = static_cast<int>(texCoords.size()) + ti + 1;
+                    }
+
+                    if (ti <= 0 || ti > static_cast<int>(texCoords.size())) {
+                        throw std::runtime_error("Invalid OBJ UV index");
+                    }
+
+                    uv = texCoords[ti - 1];
+                }
+
+                // each face reference gets its own vertex. this preserves UV
+                // seams.
+                if (vertices.size() >= 65535) {
+                    throw std::runtime_error(
+                        "OBJ file exceeds 16-bit index limit");
+                }
+
+                const bx::Vec3 position = positions[pi - 1];
+
+                vertices.push_back(Vertex(position, uv));
+
+                face.push_back(static_cast<uint16_t>(vertices.size() - 1));
             }
 
-            // sometimes its not a triangle and is some other shape
-            // so you triangulate polygon using a triangle fan.
             for (size_t i = 1; i + 1 < face.size(); i++) {
                 indices.push_back(face[0]);
                 indices.push_back(face[i]);
@@ -62,29 +107,17 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
         throw std::runtime_error("OBJ file contains no usable geometry: " +
                                  path);
     }
-
-    // bgfx indicies is uint16_t 2^16 = 65535
-    if (vertices.size() > 65535) {
-        throw std::runtime_error("OBJ file exceeds 16-bit index limit");
-    }
 }
 
 void obx::ObjMesh::upload() {
-    for (auto &vertex : vertices) {
-        vertex.r = 1;
-        vertex.g = 1;
-        vertex.b = 1;
-        vertex.a = 1;
-    }
-
     vertexBuffer = bgfx::createVertexBuffer(
-        bgfx::makeRef(vertices.data(),
-                      static_cast<uint32_t>(vertices.size() * sizeof(Vertex))),
+        bgfx::copy(vertices.data(),
+                   static_cast<uint32_t>(vertices.size() * sizeof(Vertex))),
         layout);
 
-    indexBuffer = bgfx::createIndexBuffer(bgfx::makeRef(
-        indices.data(),
-        static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
+    indexBuffer = bgfx::createIndexBuffer(
+        bgfx::copy(indices.data(),
+                   static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
 
     assert(bgfx::isValid(vertexBuffer));
     assert(bgfx::isValid(indexBuffer));

@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "bgfx/bgfx.h"
 #include <iostream>
 
 #include <fstream>
@@ -141,11 +142,27 @@ void obx::Renderer::initialize() {
     }
 
     this->buildPrograms(shaderDirectory);
+
+    sampler = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
 }
 
 void obx::Renderer::addMesh(std::unique_ptr<Mesh> mesh) {
     mesh->upload();
     meshes.push_back(std::move(mesh));
+}
+
+void obx::Renderer::loadTexture(const uint8_t *pixels) {
+    // allocate gpu memory and shove the pixels in
+    const bgfx::Memory *memory = bgfx::copy(pixels, width * height * 4);
+
+    atlas =
+        bgfx::createTexture2D(width, height,
+                              false, // no mipmap
+                              1,     // 1 layer
+                              bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_NONE);
+
+    // set the texture to point to said gpu memory
+    bgfx::updateTexture2D(atlas, 0, 0, 0, 0, width, height, memory);
 }
 
 void obx::Renderer::render() {
@@ -184,6 +201,8 @@ void obx::Renderer::render() {
         bgfx::setTransform(model);
         bgfx::setVertexBuffer(0, mesh->vertexBuffer);
         bgfx::setIndexBuffer(mesh->indexBuffer);
+
+        bgfx::setTexture(0, sampler, atlas);
 
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
                        BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);

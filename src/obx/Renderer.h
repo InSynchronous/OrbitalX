@@ -4,6 +4,7 @@
 #include "Vertex.h"
 #include <GLFW/glfw3.h>
 #include <bgfx/bgfx.h>
+#include <cstdint>
 #include <memory>
 #include <string>
 #include <vector>
@@ -28,6 +29,8 @@ class Renderer {
     bgfx::IndexBufferHandle indexBuffer;
     bgfx::VertexBufferHandle vertexBuffer;
     bgfx::ProgramHandle program;
+    bgfx::TextureHandle atlas;
+    bgfx::UniformHandle sampler;
 
     std::vector<std::unique_ptr<Mesh>> meshes;
 
@@ -44,6 +47,7 @@ class Renderer {
     bool windowShouldClose() { return glfwWindowShouldClose(info.window); }
     void initialize();
     void addMesh(std::unique_ptr<Mesh> mesh);
+    void loadTexture(const uint8_t *pixels); // rgba 1 byte each (4.29 billion)
     void render();
 };
 } // namespace obx
