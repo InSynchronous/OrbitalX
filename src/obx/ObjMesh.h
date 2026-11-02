@@ -12,6 +12,7 @@ class ObjMesh : public Mesh {
     std::vector<Vertex> vertices;
     std::vector<uint16_t> indices;
 
+    Vertex spherify(Vertex point);
     void loadFromObj(const std::string &path);
 
   public:
