@@ -1,6 +1,7 @@
 #pragma once
 
 #include "Mesh.h"
+#include "Vertex.h"
 #include <GLFW/glfw3.h>
 #include <bgfx/bgfx.h>
 #include <memory>
@@ -17,22 +18,6 @@ struct GLFWInfo {
     void *nativeWindow;
     void *nativeDisplay;
     bgfx::NativeWindowHandleType::Enum platformType;
-};
-
-struct Vertex {
-    float x, y, z;
-    float r, g, b, a;
-
-    Vertex &operator*=(float scalar) {
-        x *= scalar;
-        y *= scalar;
-        z *= scalar;
-        r *= scalar;
-        g *= scalar;
-        b *= scalar;
-        a *= scalar;
-        return *this;
-    }
 };
 
 class Renderer {

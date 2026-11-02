@@ -188,22 +188,19 @@ void obx::Renderer::render() {
 
     float time = static_cast<float>(glfwGetTime());
 
-    bx::mtxRotateXY(model, time, time * 0.7f);
-
-    const bx::Vec3 eye = {0.0f, 0.0f, -5.0f};
-    const bx::Vec3 at = {0.0f, 0.0f, 0.0f};
-    const bx::Vec3 up = {0.0f, 1.0f, 0.0f};
-
-    bx::mtxLookAt(view, eye, at, up);
+    bx::mtxLookAt(view, {0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, 0.0f},
+                  {0.0f, 1.0f, 0.0f});
 
     bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 0.1f,
                 100.0f, bgfx::getCaps()->homogeneousDepth);
 
     bgfx::setViewTransform(0, view, projection);
 
-    bgfx::setTransform(model);
-
     for (auto &mesh : meshes) {
+        bx::mtxSRT(model, 1.0f, 1.0f, 1.0f, time, time * 0.7f, 0.0f,
+                   mesh->position.x, mesh->position.y, mesh->position.z);
+
+        bgfx::setTransform(model);
         bgfx::setVertexBuffer(0, mesh->vertexBuffer);
         bgfx::setIndexBuffer(mesh->indexBuffer);
 

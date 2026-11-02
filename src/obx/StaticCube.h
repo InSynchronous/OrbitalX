@@ -1,7 +1,7 @@
 #pragma once
 
 #include "Mesh.h"
-#include "Renderer.h"
+#include "Vertex.h"
 
 namespace obx {
 class StaticCube : public Mesh {
@@ -27,7 +27,7 @@ class StaticCube : public Mesh {
     // ==end stolen from a random tutorial==
     //
   public:
-    StaticCube(float scale) : scale(scale) {}
+    StaticCube(Vertex position, float scale) : Mesh{position}, scale(scale) {}
     void upload() override;
 };
 } // namespace obx

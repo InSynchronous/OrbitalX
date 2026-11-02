@@ -1,6 +1,5 @@
 #include "StaticCube.h"
 #include <cassert>
-#include <iostream>
 
 void obx::StaticCube::upload() {
 
