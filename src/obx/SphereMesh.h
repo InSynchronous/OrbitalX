@@ -17,8 +17,10 @@ class SphereMesh : public Mesh {
     int subdivisions;
 
   public:
-    SphereMesh(bx::Vec3 position, float subdivisions, float radius)
-        : Mesh{position}, subdivisions(subdivisions), radius(radius) {}
+    SphereMesh(bx::Vec3 position, bx::Vec3 rotation, float subdivisions,
+               float radius)
+        : Mesh{position, rotation}, subdivisions(subdivisions), radius(radius) {
+    }
 
     void upload() override;
 };

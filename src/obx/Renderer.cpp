@@ -134,7 +134,7 @@ void obx::Renderer::setupImGui() {
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
 
-    ImGui::StyleColorsDark();
+    ImGui::StyleColorsClassic();
     ImGuiStyle &style = ImGui::GetStyle();
 
     ImGui_ImplGlfw_InitForOther(info.window, true);
@@ -170,18 +170,11 @@ void obx::Renderer::addMesh(std::unique_ptr<Mesh> mesh) {
     meshes.push_back(std::move(mesh));
 }
 
-void obx::Renderer::loadTexture(const uint8_t *pixels) {
-    // allocate gpu memory and shove the pixels in
-    const bgfx::Memory *memory = bgfx::copy(pixels, width * height * 4);
+void obx::Renderer::loadTexture(const uint8_t *pixels, uint16_t w, uint16_t h) {
+    const bgfx::Memory *memory = bgfx::copy(pixels, w * h * 4);
 
-    atlas =
-        bgfx::createTexture2D(width, height,
-                              false, // no mipmap
-                              1,     // 1 layer
-                              bgfx::TextureFormat::RGBA8, BGFX_SAMPLER_NONE);
-
-    // set the texture to point to said gpu memory
-    bgfx::updateTexture2D(atlas, 0, 0, 0, 0, width, height, memory);
+    atlas = bgfx::createTexture2D(w, h, false, 1, bgfx::TextureFormat::RGBA8,
+                                  BGFX_SAMPLER_V_CLAMP, memory);
 }
 
 void obx::Renderer::renderUI() {
@@ -229,7 +222,7 @@ void obx::Renderer::render() {
     bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(width),
                       static_cast<uint16_t>(height));
 
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x202838ff, 1.0f,
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000, 1.0f,
                        0);
 
     float model[16];
@@ -238,22 +231,27 @@ void obx::Renderer::render() {
 
     float time = static_cast<float>(glfwGetTime());
 
-    bx::mtxLookAt(view, {0.0f, 0.0f, -5.0f}, {0.0f, 0.0f, 0.0f},
-                  {0.0f, 1.0f, 0.0f});
+    float cameraTransform[16];
 
-    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 0.1f,
-                100.0f, bgfx::getCaps()->homogeneousDepth);
+    bx::mtxSRT(cameraTransform, 1.0f, 1.0f, 1.0f, camera.rotation.x,
+               camera.rotation.y, camera.rotation.z, camera.position.x,
+               camera.position.y, camera.position.z);
+
+    bx::mtxInverse(view, cameraTransform);
+
+    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 1.0f,
+                20000.0f, bgfx::getCaps()->homogeneousDepth);
 
     bgfx::setViewTransform(0, view, projection);
 
     for (auto &mesh : meshes) {
-        bx::mtxSRT(model, 1.0f, 1.0f, 1.0f, time, time * 0.7f, 0.0f,
-                   mesh->position.x, mesh->position.y, mesh->position.z);
+        bx::mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh->rotation.x, mesh->rotation.y,
+                   mesh->rotation.z, mesh->position.x, mesh->position.y,
+                   mesh->position.z);
 
         bgfx::setTransform(model);
         bgfx::setVertexBuffer(0, mesh->vertexBuffer);
         bgfx::setIndexBuffer(mesh->indexBuffer);
-
         bgfx::setTexture(0, sampler, atlas);
 
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |

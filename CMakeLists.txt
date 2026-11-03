@@ -59,6 +59,11 @@ target_compile_definitions(OrbitalX PRIVATE
     BX_CONFIG_DEBUG=0
 )
 
+target_compile_options(OrbitalX PRIVATE
+  -O3
+  -march=native
+)
+
 target_include_directories(OrbitalX PRIVATE
     ${BGFX_ROOT}/include
     ${BX_ROOT}/include

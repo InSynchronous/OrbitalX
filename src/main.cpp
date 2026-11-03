@@ -1,7 +1,7 @@
-#include "obx/ObjMesh.h"
+#include "bx/math.h"
 #include "obx/Renderer.h"
 #include "obx/SphereMesh.h"
-#include "obx/StaticCube.h"
+#include "stb_image.h"
 #include <iostream>
 #include <memory>
 
@@ -29,19 +29,35 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
+    float earthRadiusKm = 6371.0f;
+    float earthGM = 398600.4418f;
+    float altitudeKm = 4008.0f;
+    float timeScale = 60.0f;
+
+    bx::Vec3 earthCenter = {0.0f, 0.0f, 0.0f};
+    float orbitDist = earthRadiusKm + altitudeKm;
+    float orbitSpeed = bx::sqrt(earthGM / (orbitDist * orbitDist * orbitDist));
+    float pitchDown = bx::toRad(80.0f);
+    float roll = bx::toRad(20.0f);
+
     obx::Renderer renderer = obx::Renderer(1280, 720);
-    obx::StaticCube cube = obx::StaticCube({-4, 0, 0}, 0.8);
-    obx::SphereMesh sphere = obx::SphereMesh({0, 0, 3}, 4, 1);
-    obx::ObjMesh teapot = obx::ObjMesh({3, 3, 30}, "assets/models/teapot.obj");
+    renderer.addMesh(std::make_unique<obx::SphereMesh>(
+        earthCenter, bx::Vec3{0.0f, 0.0f, 0.0f}, 6, earthRadiusKm));
 
-    renderer.addMesh(std::make_unique<obx::StaticCube>(cube));
-    renderer.addMesh(std::make_unique<obx::SphereMesh>(sphere));
-    renderer.addMesh(std::make_unique<obx::ObjMesh>(teapot));
-
-    std::vector<uint8_t> pixels = generate_checkerboard(1280, 720);
-    renderer.loadTexture(pixels.data());
+    int w, h, channels;
+    stbi_uc *img = stbi_load("assets/earth.jpg", &w, &h, &channels, 4);
+    renderer.loadTexture(img, w, h);
+    stbi_image_free(img);
 
     while (!renderer.windowShouldClose()) {
+        float a = static_cast<float>(glfwGetTime()) * orbitSpeed * timeScale;
+
+        renderer.camera.position = {earthCenter.x,
+                                    earthCenter.y + orbitDist * bx::cos(a),
+                                    earthCenter.z + orbitDist * bx::sin(a)};
+
+        renderer.camera.rotation = {-(a + pitchDown), 0.0f, -roll};
+
         renderer.render();
     }
 

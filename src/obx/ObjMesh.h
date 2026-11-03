@@ -17,7 +17,8 @@ class ObjMesh : public Mesh {
     void loadFromObj(const std::string &path);
 
   public:
-    ObjMesh(bx::Vec3 position, const std::string &path) : Mesh{position} {
+    ObjMesh(bx::Vec3 position, bx::Vec3 rotation, const std::string &path)
+        : Mesh{position, rotation} {
         loadFromObj(path);
     }
 

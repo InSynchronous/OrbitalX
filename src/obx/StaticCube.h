@@ -25,7 +25,8 @@ class StaticCube : public Mesh {
     };
 
   public:
-    StaticCube(bx::Vec3 position, float scale) : Mesh{position}, scale(scale) {}
+    StaticCube(bx::Vec3 position, bx::Vec3 rotation, float scale)
+        : Mesh{position, rotation}, scale(scale) {}
     void upload() override;
 };
 } // namespace obx

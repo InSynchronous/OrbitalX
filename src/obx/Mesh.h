@@ -11,11 +11,13 @@ class Mesh {
     bgfx::VertexLayout layout;
 
     bx::Vec3 position;
+    bx::Vec3 rotation;
 
     friend class Renderer;
 
   public:
-    Mesh(bx::Vec3 position) : position(position) {
+    Mesh(bx::Vec3 position, bx::Vec3 rotation)
+        : position(position), rotation(rotation) {
         layout.begin()
             .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
             .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)

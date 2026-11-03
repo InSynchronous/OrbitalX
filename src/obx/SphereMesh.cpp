@@ -30,21 +30,20 @@ void SphereMesh::upload() {
 
     const int resolution = subdivisions + 1;
 
-    // Six cube faces
+    std::vector<bx::Vec3> pos;
+    std::vector<uint32_t> tris;
+
     for (int face = 0; face < 6; ++face) {
-        const uint16_t baseIndex = static_cast<uint16_t>(vertices.size());
+        const uint32_t baseIndex = static_cast<uint32_t>(pos.size());
 
         for (int y = 0; y <= resolution; ++y) {
             for (int x = 0; x <= resolution; ++x) {
                 const float u =
                     2.0f * static_cast<float>(x) / resolution - 1.0f;
-
                 const float v =
                     2.0f * static_cast<float>(y) / resolution - 1.0f;
 
-                float px = 0.0f;
-                float py = 0.0f;
-                float pz = 0.0f;
+                float px = 0.0f, py = 0.0f, pz = 0.0f;
 
                 switch (face) {
                 case 0:
@@ -79,31 +78,76 @@ void SphereMesh::upload() {
                     break;
                 }
 
-                bx::Vec3 p = spherify(px, py, pz, radius);
-
-                p.x += position.x;
-                p.y += position.y;
-                p.z += position.z;
-
-                const float texU = static_cast<float>(x) / resolution;
-                const float texV = static_cast<float>(y) / resolution;
-
-                vertices.push_back(Vertex(p, {texU, texV}));
+                pos.push_back(spherify(px, py, pz, radius));
             }
         }
 
         for (int y = 0; y < resolution; ++y) {
             for (int x = 0; x < resolution; ++x) {
-                const uint16_t i = baseIndex + y * (resolution + 1) + x;
+                const uint32_t i = baseIndex + y * (resolution + 1) + x;
 
-                indices.push_back(i);
-                indices.push_back(i + resolution + 1);
-                indices.push_back(i + 1);
+                tris.push_back(i);
+                tris.push_back(i + resolution + 1);
+                tris.push_back(i + 1);
 
-                indices.push_back(i + 1);
-                indices.push_back(i + resolution + 1);
-                indices.push_back(i + resolution + 2);
+                tris.push_back(i + 1);
+                tris.push_back(i + resolution + 1);
+                tris.push_back(i + resolution + 2);
             }
+        }
+    }
+
+    constexpr float pi = 3.14159265358979f;
+
+    for (size_t t = 0; t < tris.size(); t += 3) {
+        bx::Vec3 p[3] = {
+            pos[tris[t + 0]],
+            pos[tris[t + 1]],
+            pos[tris[t + 2]],
+        };
+        float u[3], v[3];
+        bool pole[3];
+
+        for (int k = 0; k < 3; ++k) {
+            v[k] =
+                0.5f - std::asin(bx::clamp(p[k].y / radius, -1.0f, 1.0f)) / pi;
+            u[k] = 0.5f + std::atan2(p[k].z, p[k].x) / (2.0f * pi);
+            pole[k] = std::fabs(p[k].x) + std::fabs(p[k].z) < 1e-4f * radius;
+        }
+
+        float lo = 2.0f, hi = -1.0f;
+        for (int k = 0; k < 3; ++k) {
+            if (pole[k])
+                continue;
+            lo = std::min(lo, u[k]);
+            hi = std::max(hi, u[k]);
+        }
+
+        if (hi - lo > 0.5f) {
+            for (int k = 0; k < 3; ++k) {
+                if (!pole[k] && u[k] < 0.5f)
+                    u[k] += 1.0f;
+            }
+        }
+
+        for (int k = 0; k < 3; ++k) {
+            if (!pole[k])
+                continue;
+            float sum = 0.0f;
+            int count = 0;
+            for (int j = 0; j < 3; ++j) {
+                if (pole[j])
+                    continue;
+                sum += u[j];
+                ++count;
+            }
+            if (count > 0)
+                u[k] = sum / count;
+        }
+
+        for (int k = 0; k < 3; ++k) {
+            indices.push_back(static_cast<uint16_t>(vertices.size()));
+            vertices.push_back(Vertex(p[k], {u[k], v[k]}));
         }
     }
 
