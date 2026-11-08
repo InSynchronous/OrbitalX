@@ -14,7 +14,7 @@
 
 using bx::mtxSRT;
 
-void obx::Renderer::setupGLFW() {
+void obx::gfx_engine::Renderer::setupGLFW() {
     if (!glfwInit()) {
         std::cout << "glfw init failed -1";
         std::exit(-1);
@@ -57,7 +57,7 @@ void obx::Renderer::setupGLFW() {
     this->info = {window, nativeWindow, nativeDisplay, platformType};
 }
 
-void obx::Renderer::setupBGFX() {
+void obx::gfx_engine::Renderer::setupBGFX() {
     bgfx::Init init;
     init.type = bgfx::RendererType::Count;
 
@@ -83,7 +83,7 @@ void obx::Renderer::setupBGFX() {
     }
 }
 
-bgfx::ShaderHandle obx::Renderer::loadShader(const char *path) {
+bgfx::ShaderHandle obx::gfx_engine::Renderer::loadShader(const char *path) {
     std::ifstream file(path, std::ios::binary);
 
     if (!file.is_open()) {
@@ -100,7 +100,7 @@ bgfx::ShaderHandle obx::Renderer::loadShader(const char *path) {
     return bgfx::createShader(memory);
 }
 
-void obx::Renderer::buildPrograms(std::string shaderDirectory) {
+void obx::gfx_engine::Renderer::buildPrograms(std::string shaderDirectory) {
     std::string vertexPath = std::string(shaderDirectory) + "vs_cube.bin";
     std::string fragmentPath = std::string(shaderDirectory) + "fs_cube.bin";
 
@@ -118,7 +118,7 @@ void obx::Renderer::buildPrograms(std::string shaderDirectory) {
     program = bgfx::createProgram(vertexShader, fragmentShader, true);
 }
 
-void obx::Renderer::setupImGui() {
+void obx::gfx_engine::Renderer::setupImGui() {
     IMGUI_CHECKVERSION();
     ImGui::CreateContext();
 
@@ -132,7 +132,7 @@ void obx::Renderer::setupImGui() {
     ImGui_ImplGlfw_InitForOther(info.window, true);
 }
 
-void obx::Renderer::initialize() {
+void obx::gfx_engine::Renderer::initialize() {
     this->setupGLFW();
     this->setupBGFX();
     this->setupImGui();
@@ -163,16 +163,16 @@ void obx::Renderer::initialize() {
     sampler = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
 }
 
-void obx::Renderer::addEntity(std::shared_ptr<Entity> entity) {
+void obx::gfx_engine::Renderer::addEntity(std::shared_ptr<Entity> entity) {
     entity->mesh->upload();
     entities.push_back(std::move(entity));
 }
 
-void obx::Renderer::addImguiCallback(void (*imgui_user_callback)()) {
+void obx::gfx_engine::Renderer::addImguiCallback(void (*imgui_user_callback)()) {
     this->imgui_user_callback = imgui_user_callback;
 }
 
-void obx::Renderer::renderUI() {
+void obx::gfx_engine::Renderer::renderUI() {
     ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
                                  ImGuiDockNodeFlags_PassthruCentralNode);
     ImGui::Begin("OrbitalX Debug");
@@ -207,7 +207,7 @@ void obx::Renderer::renderUI() {
     imguiRenderer.render(ImGui::GetDrawData());
 }
 
-void obx::Renderer::render() {
+void obx::gfx_engine::Renderer::render() {
     glfwPollEvents();
 
     ImGui_ImplGlfw_NewFrame();

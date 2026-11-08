@@ -1,8 +1,8 @@
 #include "bx/math.h"
 #include "imgui.h"
-#include "obx/Entity.h"
-#include "obx/Renderer.h"
-#include "obx/SphereMesh.h"
+#include "obx/gfx_engine/Entity.h"
+#include "obx/gfx_engine/Renderer.h"
+#include "obx/gfx_engine/SphereMesh.h"
 #include "stb_image.h"
 #include <iostream>
 #include <memory>
@@ -46,11 +46,13 @@ void imgui_handle() {
     ImGui::End();
 }
 
-std::shared_ptr<obx::Entity> createCelestialBody(obx::Renderer &renderer, const bx::Vec3 &position,
-                                                 float radius, const std::string &texturePath) {
-    auto mesh = std::make_unique<obx::SphereMesh>(position, bx::Vec3{0.0f, 0.0f, 0.0f}, 6, radius);
+std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Renderer &renderer,
+                                                             const bx::Vec3 &position, float radius,
+                                                             const std::string &texturePath) {
+    auto mesh = std::make_unique<obx::gfx_engine::SphereMesh>(position, bx::Vec3{0.0f, 0.0f, 0.0f},
+                                                              6, radius);
 
-    auto entity = std::make_shared<obx::Entity>(std::move(mesh));
+    auto entity = std::make_shared<obx::gfx_engine::Entity>(std::move(mesh));
     renderer.addEntity(entity);
 
     int w, h, channels;
@@ -82,7 +84,7 @@ int main() {
 
     const float timeScale = 1000.0f;
 
-    obx::Renderer renderer = obx::Renderer(1280, 720);
+    obx::gfx_engine::Renderer renderer = obx::gfx_engine::Renderer(1280, 720);
     renderer.addImguiCallback(&imgui_handle);
 
     auto earthEntity =

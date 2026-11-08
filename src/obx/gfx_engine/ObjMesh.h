@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-namespace obx {
+namespace obx::gfx_engine {
 
 class ObjMesh : public Mesh {
   private:
@@ -25,4 +25,4 @@ class ObjMesh : public Mesh {
     void upload() override;
 };
 
-} // namespace obx
+} // namespace obx::gfx_engine

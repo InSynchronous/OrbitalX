@@ -5,21 +5,18 @@
 #include <cmath>
 #include <cstdint>
 
-namespace obx {
+namespace obx::gfx_engine {
 
 static bx::Vec3 spherify(float x, float y, float z, float radius) {
     const float x2 = x * x;
     const float y2 = y * y;
     const float z2 = z * z;
 
-    const float sx =
-        x * std::sqrt(1.0f - y2 / 2.0f - z2 / 2.0f + y2 * z2 / 3.0f);
+    const float sx = x * std::sqrt(1.0f - y2 / 2.0f - z2 / 2.0f + y2 * z2 / 3.0f);
 
-    const float sy =
-        y * std::sqrt(1.0f - z2 / 2.0f - x2 / 2.0f + z2 * x2 / 3.0f);
+    const float sy = y * std::sqrt(1.0f - z2 / 2.0f - x2 / 2.0f + z2 * x2 / 3.0f);
 
-    const float sz =
-        z * std::sqrt(1.0f - x2 / 2.0f - y2 / 2.0f + x2 * y2 / 3.0f);
+    const float sz = z * std::sqrt(1.0f - x2 / 2.0f - y2 / 2.0f + x2 * y2 / 3.0f);
 
     return {sx * radius, sy * radius, sz * radius};
 }
@@ -38,10 +35,8 @@ void SphereMesh::upload() {
 
         for (int y = 0; y <= resolution; ++y) {
             for (int x = 0; x <= resolution; ++x) {
-                const float u =
-                    2.0f * static_cast<float>(x) / resolution - 1.0f;
-                const float v =
-                    2.0f * static_cast<float>(y) / resolution - 1.0f;
+                const float u = 2.0f * static_cast<float>(x) / resolution - 1.0f;
+                const float v = 2.0f * static_cast<float>(y) / resolution - 1.0f;
 
                 float px = 0.0f, py = 0.0f, pz = 0.0f;
 
@@ -109,8 +104,7 @@ void SphereMesh::upload() {
         bool pole[3];
 
         for (int k = 0; k < 3; ++k) {
-            v[k] =
-                0.5f - std::asin(bx::clamp(p[k].y / radius, -1.0f, 1.0f)) / pi;
+            v[k] = 0.5f - std::asin(bx::clamp(p[k].y / radius, -1.0f, 1.0f)) / pi;
             u[k] = 0.5f + std::atan2(p[k].z, p[k].x) / (2.0f * pi);
             pole[k] = std::fabs(p[k].x) + std::fabs(p[k].z) < 1e-4f * radius;
         }
@@ -152,13 +146,11 @@ void SphereMesh::upload() {
     }
 
     vertexBuffer = bgfx::createVertexBuffer(
-        bgfx::copy(vertices.data(),
-                   static_cast<uint32_t>(vertices.size() * sizeof(Vertex))),
+        bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Vertex))),
         layout);
 
     indexBuffer = bgfx::createIndexBuffer(
-        bgfx::copy(indices.data(),
-                   static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
+        bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
 }
 
-} // namespace obx
+} // namespace obx::gfx_engine

@@ -2,7 +2,7 @@
 
 #include "bx/math.h"
 
-namespace obx {
+namespace obx::gfx_engine {
 
 // Bx doesn't have a vec2, or integer variants of vectors so I added my own.
 // Note this is incompatible with all bx functions, its just a neat naming
@@ -14,13 +14,9 @@ namespace obx {
 struct UVCoord {
     float x, y;
 
-    UVCoord operator+(const UVCoord &other) const {
-        return {x + other.x, y + other.y};
-    }
+    UVCoord operator+(const UVCoord &other) const { return {x + other.x, y + other.y}; }
 
-    UVCoord operator-(const UVCoord &other) const {
-        return {x - other.x, y - other.y};
-    }
+    UVCoord operator-(const UVCoord &other) const { return {x - other.x, y - other.y}; }
 
     UVCoord operator*(float scalar) const { return {x * scalar, y * scalar}; }
 
@@ -33,7 +29,7 @@ struct UVCoord {
 
 struct Vertex {
     bx::Vec3 position;
-    obx::UVCoord uv;
+    obx::gfx_engine::UVCoord uv;
 };
 
-} // namespace obx
+} // namespace obx::gfx_engine

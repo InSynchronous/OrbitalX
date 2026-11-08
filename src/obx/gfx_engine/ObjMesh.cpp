@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-void obx::ObjMesh::loadFromObj(const std::string &path) {
+void obx::gfx_engine::ObjMesh::loadFromObj(const std::string &path) {
     std::ifstream file(path);
 
     if (!file.is_open()) {
@@ -17,7 +17,7 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
     }
 
     std::vector<bx::Vec3> positions;
-    std::vector<obx::UVCoord> texCoords;
+    std::vector<obx::gfx_engine::UVCoord> texCoords;
 
     std::string line;
 
@@ -65,7 +65,7 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
                     throw std::runtime_error("Invalid OBJ vertex index");
                 }
 
-                obx::UVCoord uv = {0.0f, 0.0f};
+                obx::gfx_engine::UVCoord uv = {0.0f, 0.0f};
 
                 if (!uvIndex.empty()) {
                     int ti = std::stoi(uvIndex);
@@ -84,8 +84,7 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
                 // each face reference gets its own vertex. this preserves UV
                 // seams.
                 if (vertices.size() >= 65535) {
-                    throw std::runtime_error(
-                        "OBJ file exceeds 16-bit index limit");
+                    throw std::runtime_error("OBJ file exceeds 16-bit index limit");
                 }
 
                 const bx::Vec3 position = positions[pi - 1];
@@ -104,20 +103,17 @@ void obx::ObjMesh::loadFromObj(const std::string &path) {
     }
 
     if (vertices.empty() || indices.empty()) {
-        throw std::runtime_error("OBJ file contains no usable geometry: " +
-                                 path);
+        throw std::runtime_error("OBJ file contains no usable geometry: " + path);
     }
 }
 
-void obx::ObjMesh::upload() {
+void obx::gfx_engine::ObjMesh::upload() {
     vertexBuffer = bgfx::createVertexBuffer(
-        bgfx::copy(vertices.data(),
-                   static_cast<uint32_t>(vertices.size() * sizeof(Vertex))),
+        bgfx::copy(vertices.data(), static_cast<uint32_t>(vertices.size() * sizeof(Vertex))),
         layout);
 
     indexBuffer = bgfx::createIndexBuffer(
-        bgfx::copy(indices.data(),
-                   static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
+        bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
 
     assert(bgfx::isValid(vertexBuffer));
     assert(bgfx::isValid(indexBuffer));

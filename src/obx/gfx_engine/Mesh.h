@@ -2,7 +2,7 @@
 
 #include "bx/math.h"
 #include <bgfx/bgfx.h>
-namespace obx {
+namespace obx::gfx_engine {
 
 class Mesh {
   protected:
@@ -16,8 +16,7 @@ class Mesh {
     friend class Renderer;
 
   public:
-    Mesh(bx::Vec3 position, bx::Vec3 rotation)
-        : position(position), rotation(rotation) {
+    Mesh(bx::Vec3 position, bx::Vec3 rotation) : position(position), rotation(rotation) {
         layout.begin()
             .add(bgfx::Attrib::Position, 3, bgfx::AttribType::Float)
             .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
@@ -28,4 +27,4 @@ class Mesh {
 
     virtual void upload() = 0;
 };
-} // namespace obx
+} // namespace obx::gfx_engine

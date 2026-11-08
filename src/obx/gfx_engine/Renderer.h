@@ -20,7 +20,7 @@
 #endif
 #include <GLFW/glfw3native.h>
 
-namespace obx {
+namespace obx::gfx_engine {
 struct GLFWInfo {
     GLFWwindow *window;
     void *nativeWindow;
@@ -67,4 +67,4 @@ class Renderer {
 
     Camera camera{{0, 0, 0}, {0, 0, 0}};
 };
-} // namespace obx
+} // namespace obx::gfx_engine

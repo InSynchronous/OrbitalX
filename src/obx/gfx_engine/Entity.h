@@ -4,7 +4,7 @@
 #include "bgfx/bgfx.h"
 #include <memory>
 
-namespace obx {
+namespace obx::gfx_engine {
 
 struct Entity {
     std::unique_ptr<Mesh> mesh;
@@ -21,4 +21,4 @@ struct Entity {
     }
 };
 
-} // namespace obx
+} // namespace obx::gfx_engine

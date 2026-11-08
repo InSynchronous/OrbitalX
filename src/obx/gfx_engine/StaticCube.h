@@ -3,16 +3,14 @@
 #include "Mesh.h"
 #include "Vertex.h"
 
-namespace obx {
+namespace obx::gfx_engine {
 class StaticCube : public Mesh {
   private:
     float scale;
-    obx::Vertex vertices[8] = {
-        {{-1, -1, -1}, {1, 0}}, {{1, -1, -1}, {0, 1}},
-        {{1, 1, -1}, {0, 0}},   {{-1, 1, -1}, {1, 1}},
+    obx::gfx_engine::Vertex vertices[8] = {
+        {{-1, -1, -1}, {1, 0}}, {{1, -1, -1}, {0, 1}}, {{1, 1, -1}, {0, 0}}, {{-1, 1, -1}, {1, 1}},
 
-        {{-1, -1, 1}, {1, 0}},  {{1, -1, 1}, {0, 1}},
-        {{1, 1, 1}, {1, 1}},    {{-1, 1, 1}, {1, 1}},
+        {{-1, -1, 1}, {1, 0}},  {{1, -1, 1}, {0, 1}},  {{1, 1, 1}, {1, 1}},  {{-1, 1, 1}, {1, 1}},
     };
 
     uint16_t indices[36] = {
@@ -29,4 +27,4 @@ class StaticCube : public Mesh {
         : Mesh{position, rotation}, scale(scale) {}
     void upload() override;
 };
-} // namespace obx
+} // namespace obx::gfx_engine

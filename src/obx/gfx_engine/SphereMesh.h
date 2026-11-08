@@ -6,7 +6,7 @@
 #include <cstdint>
 #include <vector>
 
-namespace obx {
+namespace obx::gfx_engine {
 
 class SphereMesh : public Mesh {
   private:
@@ -17,12 +17,10 @@ class SphereMesh : public Mesh {
     int subdivisions;
 
   public:
-    SphereMesh(bx::Vec3 position, bx::Vec3 rotation, float subdivisions,
-               float radius)
-        : Mesh{position, rotation}, subdivisions(subdivisions), radius(radius) {
-    }
+    SphereMesh(bx::Vec3 position, bx::Vec3 rotation, float subdivisions, float radius)
+        : Mesh{position, rotation}, subdivisions(subdivisions), radius(radius) {}
 
     void upload() override;
 };
 
-} // namespace obx
+} // namespace obx::gfx_engine
