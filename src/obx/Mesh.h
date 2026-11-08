@@ -23,6 +23,9 @@ class Mesh {
             .add(bgfx::Attrib::TexCoord0, 2, bgfx::AttribType::Float)
             .end();
     }
+    void setPosition(bx::Vec3 p) { position = p; }
+    void setRotation(bx::Vec3 r) { rotation = r; }
+
     virtual void upload() = 0;
 };
 } // namespace obx

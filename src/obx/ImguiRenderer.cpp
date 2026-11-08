@@ -126,11 +126,23 @@ void ImGuiRenderer::initialize() {
         .add(bgfx::Attrib::Color0, 4, bgfx::AttribType::Uint8, true)
         .end();
 
-    bgfx::ShaderHandle vertexShader =
-        loadShader("assets/shaders/spirv/vs_imgui.bin");
+    const char *vsPath = nullptr;
+    const char *fsPath = nullptr;
 
-    bgfx::ShaderHandle fragmentShader =
-        loadShader("assets/shaders/spirv/fs_imgui.bin");
+    switch (bgfx::getRendererType()) {
+    case bgfx::RendererType::Metal:
+        vsPath = "assets/shaders/metal/vs_imgui.bin";
+        fsPath = "assets/shaders/metal/fs_imgui.bin";
+        break;
+    default:
+        vsPath = "assets/shaders/spirv/vs_imgui.bin";
+        fsPath = "assets/shaders/spirv/fs_imgui.bin";
+        break;
+    }
+
+    bgfx::ShaderHandle vertexShader = loadShader(vsPath);
+
+    bgfx::ShaderHandle fragmentShader = loadShader(fsPath);
 
     if (!bgfx::isValid(vertexShader) || !bgfx::isValid(fragmentShader)) {
         std::cerr << "Failed to load ImGui shaders\n";

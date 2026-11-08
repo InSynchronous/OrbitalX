@@ -4,12 +4,15 @@
 #include "stb_image.h"
 #include <iostream>
 #include <memory>
+#include <vector>
+
+namespace {
 
 std::vector<uint8_t> generate_checkerboard(int width, int height) {
     std::vector<uint8_t> pixels(width * height * 4);
 
-    for (uint16_t y = 0; y < height; ++y) {
-        for (uint16_t x = 0; x < width; ++x) {
+    for (int y = 0; y < height; ++y) {
+        for (int x = 0; x < width; ++x) {
             const bool checker = ((x / 32) + (y / 32)) % 2;
 
             const uint8_t color = checker ? 255 : 30;
@@ -26,37 +29,55 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
     return pixels;
 }
 
+}
+
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
-    float earthRadiusKm = 6371.0f;
-    float earthGM = 398600.4418f;
-    float altitudeKm = 4008.0f;
-    float timeScale = 60.0f;
+    const float earthRadiusKm = 6371.0f;
+    const float geoAltitudeKm = 35786.0f;
+    const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
 
-    bx::Vec3 earthCenter = {0.0f, 0.0f, 0.0f};
-    float orbitDist = earthRadiusKm + altitudeKm;
-    float orbitSpeed = bx::sqrt(earthGM / (orbitDist * orbitDist * orbitDist));
-    float pitchDown = bx::toRad(80.0f);
-    float roll = bx::toRad(20.0f);
+    const float siderealDaySec = 86164.0f;
+    const float earthAngularSpeed =
+        2.0f * 3.14159265358979f / siderealDaySec;
+
+    const float timeScale = 1000.0f;
 
     obx::Renderer renderer = obx::Renderer(1280, 720);
-    renderer.addMesh(std::make_unique<obx::SphereMesh>(
-        earthCenter, bx::Vec3{0.0f, 0.0f, 0.0f}, 6, earthRadiusKm));
 
-    int w, h, channels;
+    auto earthMesh = std::make_unique<obx::SphereMesh>(
+        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 6,
+        earthRadiusKm);
+    obx::SphereMesh *earth = earthMesh.get();
+    renderer.addMesh(std::move(earthMesh));
+
+    int w = 0, h = 0, channels = 0;
     stbi_uc *img = stbi_load("assets/earth.jpg", &w, &h, &channels, 4);
-    renderer.loadTexture(img, w, h);
-    stbi_image_free(img);
+    if (img == nullptr) {
+        img = stbi_load("../assets/earth.jpg", &w, &h, &channels, 4);
+    }
+    if (img != nullptr) {
+        std::cout << "Loaded earth texture: " << w << "x" << h << std::endl;
+        renderer.loadTexture(img, w, h);
+        stbi_image_free(img);
+    } else {
+        std::cout << "WARNING: assets/earth.jpg not found (run ./build/OrbitalX "
+                     "from the repo root). Using checkerboard fallback."
+                  << std::endl;
+        auto fallback = generate_checkerboard(512, 256);
+        renderer.loadTexture(fallback.data(), 512, 256);
+    }
+
+    renderer.camera.position = {0.0f, 0.0f, orbitDistKm};
+    renderer.camera.rotation = {0.0f, bx::toRad(180.0f), 0.0f};
 
     while (!renderer.windowShouldClose()) {
-        float a = static_cast<float>(glfwGetTime()) * orbitSpeed * timeScale;
+        float simTime =
+            static_cast<float>(glfwGetTime()) * timeScale;
 
-        renderer.camera.position = {earthCenter.x,
-                                    earthCenter.y + orbitDist * bx::cos(a),
-                                    earthCenter.z + orbitDist * bx::sin(a)};
-
-        renderer.camera.rotation = {-(a + pitchDown), 0.0f, -roll};
+        float earthAngle = simTime * earthAngularSpeed;
+        earth->setRotation({0.0f, earthAngle, 0.0f});
 
         renderer.render();
     }

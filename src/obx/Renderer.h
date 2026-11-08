@@ -11,8 +11,12 @@
 #include <string>
 #include <vector>
 
+#ifdef __APPLE__
+#define GLFW_EXPOSE_NATIVE_COCOA
+#else
 #define GLFW_EXPOSE_NATIVE_X11
 #define GLFW_EXPOSE_NATIVE_WAYLAND
+#endif
 #include <GLFW/glfw3native.h>
 
 namespace obx {
@@ -31,6 +35,7 @@ struct Camera {
 class Renderer {
   private:
     int width, height;
+    int resetWidth = 0, resetHeight = 0;
     GLFWInfo info;
 
     bgfx::IndexBufferHandle indexBuffer;

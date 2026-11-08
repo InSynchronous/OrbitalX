@@ -1,9 +1,14 @@
-cmake_minimum_required(VERSION 3.10)
+cmake_minimum_required(VERSION 3.16)
 
 project(OrbitalX LANGUAGES CXX)
 
 set(CMAKE_CXX_STANDARD 20)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
+
+if(APPLE)
+    set(CMAKE_OSX_ARCHITECTURES arm64)
+endif()
 
 find_package(glfw3 REQUIRED)
 
@@ -11,7 +16,11 @@ set(BGFX_ROOT ${CMAKE_SOURCE_DIR}/submodules/bgfx)
 set(BX_ROOT   ${CMAKE_SOURCE_DIR}/submodules/bx)
 set(BIMG_ROOT ${CMAKE_SOURCE_DIR}/submodules/bimg)
 
-set(BGFX_BUILD ${BGFX_ROOT}/.build/linux64_gcc/bin)
+if(APPLE)
+    set(BGFX_BUILD ${BGFX_ROOT}/.build/osx-arm64/bin)
+else()
+    set(BGFX_BUILD ${BGFX_ROOT}/.build/linux64_gcc/bin)
+endif()
 
 add_library(bgfx STATIC IMPORTED)
 set_target_properties(bgfx PROPERTIES
@@ -46,8 +55,6 @@ target_include_directories(imgui PUBLIC
 
 target_link_libraries(imgui PUBLIC glfw)
 
-set(CMAKE_EXPORT_COMPILE_COMMANDS ON)
-
 # OrbitalX
 file(GLOB_RECURSE SOURCES CONFIGURE_DEPENDS
     src/*.cpp
@@ -60,8 +67,8 @@ target_compile_definitions(OrbitalX PRIVATE
 )
 
 target_compile_options(OrbitalX PRIVATE
-  -O3
-  -march=native
+    -O3
+    -march=native
 )
 
 target_include_directories(OrbitalX PRIVATE
@@ -75,7 +82,25 @@ target_link_libraries(OrbitalX PRIVATE
     bx
     bimg
     glfw
-    dl
-    pthread
     imgui
 )
+
+if(APPLE)
+    target_link_libraries(OrbitalX PRIVATE
+        "-framework Cocoa"
+        "-framework Foundation"
+        "-framework IOKit"
+        "-framework CoreFoundation"
+        "-framework CoreGraphics"
+        "-framework CoreVideo"
+        "-framework CoreMedia"
+        "-framework VideoToolbox"
+        "-framework QuartzCore"
+        "-framework Metal"
+    )
+else()
+    target_link_libraries(OrbitalX PRIVATE
+        dl
+        pthread
+    )
+endif()

@@ -29,26 +29,16 @@ void obx::Renderer::setupGLFW() {
     }
 
     // windowing
-    void *nativeWindow = nullptr;
+#ifdef __APPLE__
+    void *nativeWindow = glfwGetCocoaWindow(window);
     void *nativeDisplay = nullptr;
-
-    if (glfwGetPlatform() == GLFW_PLATFORM_WAYLAND) {
-        nativeWindow = glfwGetWaylandWindow(window);
-        nativeDisplay = glfwGetWaylandDisplay();
-    } else if (glfwGetPlatform() == GLFW_PLATFORM_X11) {
-        nativeWindow = reinterpret_cast<void *>(
-            static_cast<uintptr_t>(glfwGetX11Window(window)));
-
-        nativeDisplay = glfwGetX11Display();
-    } else {
-        std::cout << "unsupported platform. use linux bum" << std::endl;
-        glfwDestroyWindow(window);
-        glfwTerminate();
-    }
-
     bgfx::NativeWindowHandleType::Enum platformType =
         bgfx::NativeWindowHandleType::Default;
-
+#else
+    void *nativeWindow = nullptr;
+    void *nativeDisplay = nullptr;
+    bgfx::NativeWindowHandleType::Enum platformType =
+        bgfx::NativeWindowHandleType::Default;
     if (glfwGetPlatform() == GLFW_PLATFORM_WAYLAND) {
         nativeWindow = glfwGetWaylandWindow(window);
         nativeDisplay = glfwGetWaylandDisplay();
@@ -56,7 +46,6 @@ void obx::Renderer::setupGLFW() {
     } else if (glfwGetPlatform() == GLFW_PLATFORM_X11) {
         nativeWindow = reinterpret_cast<void *>(
             static_cast<uintptr_t>(glfwGetX11Window(window)));
-
         nativeDisplay = glfwGetX11Display();
     } else {
         std::cerr << "Unsupported platform\n";
@@ -64,13 +53,13 @@ void obx::Renderer::setupGLFW() {
         glfwTerminate();
         std::exit(-1);
     }
+#endif
 
     this->info = {window, nativeWindow, nativeDisplay, platformType};
 }
 
 void obx::Renderer::setupBGFX() {
     bgfx::Init init;
-
     init.type = bgfx::RendererType::Count;
 
     init.platformData.type = info.platformType;
@@ -79,8 +68,10 @@ void obx::Renderer::setupBGFX() {
 
     init.swapChain.nwh = info.nativeWindow;
     init.swapChain.ndt = info.nativeDisplay;
-    init.swapChain.width = width;
-    init.swapChain.height = height;
+    int fbw, fbh;
+    glfwGetFramebufferSize(info.window, &fbw, &fbh);
+    init.swapChain.width = fbw > 0 ? static_cast<uint32_t>(fbw) : width;
+    init.swapChain.height = fbh > 0 ? static_cast<uint32_t>(fbh) : height;
 
     init.reset = BGFX_RESET_VSYNC;
 
@@ -106,8 +97,14 @@ bgfx::ShaderHandle obx::Renderer::loadShader(const char *path) {
 
     const bgfx::Memory *memory =
         bgfx::copy(data.data(), static_cast<uint32_t>(data.size()));
+    std::cout << "Loading shader: " << path
+          << " (" << data.size() << " bytes)"
+          << " Renderer: "
+          << bgfx::getRendererName(bgfx::getRendererType())
+          << '\n';
+
     return bgfx::createShader(memory);
-}
+    }
 
 void obx::Renderer::buildPrograms(std::string shaderDirectory) {
     std::string vertexPath = std::string(shaderDirectory) + "vs_cube.bin";
@@ -149,18 +146,24 @@ void obx::Renderer::initialize() {
 
     const char *shaderDirectory = nullptr;
 
-    switch (bgfx::getRendererType()) {
-    case bgfx::RendererType::Vulkan:
-        shaderDirectory = "assets/shaders/spirv/";
-        break;
-    default:
-        std::cerr << "Unsupported renderer\n";
-        bgfx::shutdown();
-        glfwTerminate();
-        std::exit(-1);
-    }
+switch (bgfx::getRendererType()) {
+case bgfx::RendererType::Metal:
+    shaderDirectory = "assets/shaders/metal/";
+    break;
 
-    this->buildPrograms(shaderDirectory);
+case bgfx::RendererType::Vulkan:
+    shaderDirectory = "assets/shaders/spirv/";
+    break;
+
+default:
+    std::cerr << "Unsupported renderer: "
+              << bgfx::getRendererName(bgfx::getRendererType())
+              << '\n';
+
+    bgfx::shutdown();
+    glfwTerminate();
+    std::exit(-1);
+}    this->buildPrograms(shaderDirectory);
 
     sampler = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
 }
@@ -194,6 +197,12 @@ void obx::Renderer::renderUI() {
 
     ImGui::Text("Meshes: %zu", meshes.size());
 
+    int fbw, fbh;
+    glfwGetFramebufferSize(info.window, &fbw, &fbh);
+    ImGui::Text("Framebuffer: %d x %d", fbw, fbh);
+    ImGui::Text("Cam: %.0f, %.0f, %.0f", camera.position.x,
+                camera.position.y, camera.position.z);
+
     ImGui::Spacing();
     ImGui::Text("Input");
     ImGui::Separator();
@@ -219,11 +228,22 @@ void obx::Renderer::render() {
     if (width == 0 || height == 0)
         return;
 
+    if (width != resetWidth || height != resetHeight) {
+        bgfx::SwapChain desc;
+        desc.nwh = info.nativeWindow;
+        desc.ndt = info.nativeDisplay;
+        desc.width = static_cast<uint32_t>(width);
+        desc.height = static_cast<uint32_t>(height);
+        bgfx::reset(BGFX_RESET_VSYNC, &desc);
+        resetWidth = width;
+        resetHeight = height;
+    }
+
     bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(width),
                       static_cast<uint16_t>(height));
 
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x000000, 1.0f,
-                       0);
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x0b1028ff,
+                       1.0f, 0);
 
     float model[16];
     float view[16];
@@ -239,8 +259,8 @@ void obx::Renderer::render() {
 
     bx::mtxInverse(view, cameraTransform);
 
-    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 1.0f,
-                20000.0f, bgfx::getCaps()->homogeneousDepth);
+    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 100.0f,
+                500000.0f, bgfx::getCaps()->homogeneousDepth);
 
     bgfx::setViewTransform(0, view, projection);
 
