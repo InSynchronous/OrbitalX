@@ -1,4 +1,5 @@
 #include "bx/math.h"
+#include "imgui.h"
 #include "obx/Entity.h"
 #include "obx/Renderer.h"
 #include "obx/SphereMesh.h"
@@ -32,6 +33,19 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 
 } // namespace
 
+static int imgui_value = 1;
+
+void imgui_handle() {
+    ImGui::Begin("Userspace box");
+    ImGui::Text("Set Speed Multiplier:");
+    ImGui::InputInt("##speed", &imgui_value);
+
+    ImGui::Separator();
+    ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
+
+    ImGui::End();
+}
+
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
@@ -45,6 +59,7 @@ int main() {
     const float timeScale = 1000.0f;
 
     obx::Renderer renderer = obx::Renderer(1280, 720);
+    renderer.addImguiCallback(&imgui_handle);
 
     obx::SphereMesh earthMesh =
         obx::SphereMesh(bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 6, earthRadiusKm);
@@ -72,7 +87,7 @@ int main() {
     while (!renderer.windowShouldClose()) {
         float simTime = static_cast<float>(glfwGetTime()) * timeScale;
 
-        float earthAngle = simTime * earthAngularSpeed * renderer.imgui_value;
+        float earthAngle = simTime * earthAngularSpeed * imgui_value;
         earthEntity->mesh.setRotation({0.0f, earthAngle, 0.0f});
 
         renderer.render();

@@ -55,14 +55,16 @@ class Renderer {
     void renderUI();
     void buildPrograms(std::string shaderDirectory);
 
+    void (*imgui_user_callback)();
+
   public:
     Renderer(int width, int height) : width(width), height(height) { this->initialize(); }
     bool windowShouldClose() { return glfwWindowShouldClose(info.window); }
     void initialize();
     void addEntity(std::shared_ptr<Entity> entity);
+    void addImguiCallback(void (*imgui_user_callback)());
     void render();
 
     Camera camera{{0, 0, 0}, {0, 0, 0}};
-    int imgui_value = 1;
 };
 } // namespace obx

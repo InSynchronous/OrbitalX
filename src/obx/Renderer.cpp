@@ -124,6 +124,7 @@ void obx::Renderer::setupImGui() {
 
     ImGuiIO &io = ImGui::GetIO();
     io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
+    io.ConfigFlags |= ImGuiConfigFlags_DockingEnable;
 
     ImGui::StyleColorsClassic();
     ImGuiStyle &style = ImGui::GetStyle();
@@ -167,6 +168,10 @@ void obx::Renderer::addEntity(std::shared_ptr<Entity> entity) {
     entities.push_back(std::move(entity));
 }
 
+void obx::Renderer::addImguiCallback(void (*imgui_user_callback)()) {
+    this->imgui_user_callback = imgui_user_callback;
+}
+
 void obx::Renderer::renderUI() {
     ImGui::Begin("OrbitalX Debug");
 
@@ -190,15 +195,11 @@ void obx::Renderer::renderUI() {
     ImGui::Text("Cam: %.0f, %.0f, %.0f", camera.position.x, camera.position.y, camera.position.z);
 
     ImGui::Spacing();
-    ImGui::Text("Set Speed Multiplier:");
-    if (ImGui::InputInt("##speed", &imgui_value)) {
-        std::cout << "value was changed! " << std::endl;
-    }
-
-    ImGui::Separator();
-    ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
-
     ImGui::End();
+
+    if (this->imgui_user_callback != nullptr) {
+        imgui_user_callback();
+    }
 
     ImGui::Render();
     imguiRenderer.render(ImGui::GetDrawData());
