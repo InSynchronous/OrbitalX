@@ -149,7 +149,7 @@ int main() {
 
     const float METERS_TO_KM = 1.0f / 1000.0f;
 
-    const double FIXED_DT = 1.0 / 10.0;
+    const double FIXED_DT = 1.0f / 1.0f;
     double accumulator = 0.0;
     double previousTime = glfwGetTime();
 
@@ -203,6 +203,8 @@ int main() {
 
         moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
         moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
+
+        std::cout << "Moon position: " << moon->getPosition().x << std::endl;
 
         renderer.render();
     }
