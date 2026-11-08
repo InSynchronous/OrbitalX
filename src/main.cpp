@@ -33,14 +33,75 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 
 } // namespace
 
-static int imgui_value = 1;
+static int speed_mul = 1;
+static float focalLengthMm = 134.0f;
+static float sensorHeightMm = 37.7f;
+
+static float roll = 0.0f;
+static float pitch = 0.0f;
+static float yaw = 0.0f;
+
+enum class CameraSensor { Custom, SonyFullFrame, SonyAPS_C, SonyMicroFourThirds, GOES16GLM };
+
+static CameraSensor selectedSensor = CameraSensor::SonyFullFrame;
+
+static const char *sensorNames[] = {"Custom", "Sony Full Frame", "Sony APS-C", "Micro Four Thirds",
+                                    "GOES-16 GLM"};
+
+void setCameraSensor(CameraSensor sensor) {
+    selectedSensor = sensor;
+
+    switch (sensor) {
+    case CameraSensor::SonyFullFrame:
+        sensorHeightMm = 24.0f;
+        break;
+
+    case CameraSensor::SonyAPS_C:
+        sensorHeightMm = 15.6f;
+        break;
+
+    case CameraSensor::SonyMicroFourThirds:
+        sensorHeightMm = 13.0f;
+        break;
+
+    case CameraSensor::GOES16GLM:
+        focalLengthMm = 134.0f;
+        break;
+
+    case CameraSensor::Custom:
+        return;
+    }
+}
 
 void imgui_handle() {
     ImGui::Begin("Userspace box");
-    ImGui::Text("Set Speed Multiplier:");
-    ImGui::InputInt("##speed", &imgui_value);
+
+    ImGui::Text("Simulation");
+    ImGui::InputInt("Speed Multiplier", &speed_mul);
 
     ImGui::Separator();
+
+    ImGui::Text("Camera Settings");
+
+    int sensorIndex = static_cast<int>(selectedSensor);
+    if (ImGui::Combo("Sensor", &sensorIndex, sensorNames, IM_ARRAYSIZE(sensorNames))) {
+        setCameraSensor(static_cast<CameraSensor>(sensorIndex));
+    }
+
+    ImGui::BeginDisabled(selectedSensor != CameraSensor::Custom);
+    ImGui::InputFloat("Sensor Height (mm)", &sensorHeightMm);
+    ImGui::EndDisabled();
+    ImGui::InputFloat("Lens (mm)", &focalLengthMm);
+
+    ImGui::Separator();
+
+    ImGui::Text("Camera Orientation (deg)");
+    ImGui::InputFloat("Roll", &roll, 0.1f, 1.0f, "%.2f");
+    ImGui::InputFloat("Pitch", &pitch, 0.1f, 1.0f, "%.2f");
+    ImGui::InputFloat("Yaw", &yaw, 16.75f, 1.0f, "%.2f");
+
+    ImGui::Separator();
+
     ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
 
     ImGui::End();
@@ -77,8 +138,10 @@ int main() {
     const float geoAltitudeKm = 35'786.0f;
     const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
 
-    const float siderealDaySec = 86'164.0f;
+    const float siderealDaySec = 86'164.0f; // day in seconds
+    const float lunarSiderealMonthSec = 2'360'591.0f;
     const float earthAngularSpeed = 2.0f * 3.14159265358979f / siderealDaySec;
+    const float moonAngularSpeed = 2.0f * 3.14159265358979f / lunarSiderealMonthSec;
 
     const float moonRadiusKm = 1'737.4f;
 
@@ -91,19 +154,25 @@ int main() {
         createCelestialBody(renderer, {0.0f, 0.0f, 0.0f}, earthRadiusKm, "assets/earth.jpg");
 
     auto moonEntity =
-        createCelestialBody(renderer, {-10'000.0f, 0.0f, 0.0f}, moonRadiusKm, "assets/moon.jpg");
+        createCelestialBody(renderer, {-384'399.0f, 0.0f, 0.0f}, moonRadiusKm, "assets/moon.jpg");
 
     renderer.camera.position = {0.0f, 0.0f, orbitDistKm};
     renderer.camera.rotation = {0.0f, bx::toRad(180.0f), 0.0f};
 
     while (!renderer.windowShouldClose()) {
-        float simTime = static_cast<float>(glfwGetTime()) * timeScale;
+        renderer.camera.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
 
-        float earthAngle = simTime * earthAngularSpeed * imgui_value;
+        renderer.camera.fov = bx::toDeg(2.0f * atan(sensorHeightMm / (2.0f * focalLengthMm)));
+
+        float simTime = static_cast<float>(glfwGetTime()) * timeScale;
+        float earthAngle = simTime * earthAngularSpeed * speed_mul;
+        float moonAngle = simTime * moonAngularSpeed * speed_mul;
 
         // not really orbitting, just imagine you're at a point on geostationary orbit watching the
-        // earth spin
+        // earth spin. Sorta defeats the purpose of geoSTATIONARY orbit but yea
         earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
+
+        moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
 
         renderer.render();
     }

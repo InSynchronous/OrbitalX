@@ -247,7 +247,8 @@ void obx::gfx_engine::Renderer::render() {
 
     bx::mtxInverse(view, cameraTransform);
 
-    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 100.0f, 500000.0f,
+    // 120 deg fov
+    bx::mtxProj(projection, camera.fov, static_cast<float>(width) / height, 100.0f, 500000.0f,
                 bgfx::getCaps()->homogeneousDepth);
 
     bgfx::setViewTransform(0, view, projection);

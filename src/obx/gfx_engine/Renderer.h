@@ -31,6 +31,7 @@ struct GLFWInfo {
 struct Camera {
     bx::Vec3 position;
     bx::Vec3 rotation;
+    float fov;
 };
 
 class Renderer {
