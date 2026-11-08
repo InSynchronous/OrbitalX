@@ -35,6 +35,19 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 
 } // namespace
 
+const float earthRadiusKm = 6'371.0f;
+const float geoAltitudeKm = 35'786.0f;
+const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
+
+const float siderealDaySec = 86'164.0f;
+const float lunarSiderealMonthSec = 2'360'591.0f;
+const float earthAngularSpeed = 2.0f * 3.14159265358979f / siderealDaySec;
+const float moonAngularSpeed = 2.0f * 3.14159265358979f / lunarSiderealMonthSec;
+
+const float moonRadiusKm = 1'737.4f;
+
+const float METERS_TO_KM = 1.0f / 1000.0f;
+
 static int speed_mul = 1000; // 1000x speed
 static double FIXED_DT = 1;  // 1 second
 
@@ -48,12 +61,21 @@ static float roll = 0.0f;
 static float pitch = 0.0f;
 static float yaw = 0.0f;
 
+static obx::gfx_engine::Camera c = {
+    {0.0f, 0.0f, orbitDistKm},                                    // position
+    {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)} // orientation
+};
+
 enum class CameraSensor { Custom, SonyFullFrame, SonyAPS_C, SonyMicroFourThirds, GOES16GLM };
 
 static CameraSensor selectedSensor = CameraSensor::SonyFullFrame;
 
 static const char *sensorNames[] = {"Custom", "Sony Full Frame", "Sony APS-C", "Micro Four Thirds",
                                     "GOES-16 GLM"};
+
+enum class CameraPosition { Custom, Geostationary, PolarNorth, PolarSouth };
+static CameraPosition selectedPosition = CameraPosition::Geostationary;
+static const char *positionNames[] = {"Custom", "Geostationary", "PolarNorth", "PolarSouth"};
 
 void setCameraSensor(CameraSensor sensor) {
     selectedSensor = sensor;
@@ -78,6 +100,38 @@ void setCameraSensor(CameraSensor sensor) {
     case CameraSensor::Custom:
         return;
     }
+}
+
+void setCameraPosition(CameraPosition position) {
+    selectedPosition = position;
+
+    switch (position) {
+    case CameraPosition::Geostationary:
+        c.position = {0.0f, 0.0f, orbitDistKm};
+        roll = pitch = yaw = 0.0f;
+        break;
+
+    case CameraPosition::PolarNorth:
+        c.position = {0.0f, orbitDistKm, 0.0f};
+
+        pitch = -90.0f;
+        yaw = 0.0f;
+        roll = 0.0f;
+        break;
+
+    case CameraPosition::PolarSouth:
+        c.position = {0.0f, -orbitDistKm, 0.0f};
+
+        pitch = 90.0f;
+        yaw = 0.0f;
+        roll = 0.0f;
+        break;
+
+    case CameraPosition::Custom:
+        return;
+    }
+
+    c.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
 }
 
 void imgui_handle() {
@@ -106,11 +160,28 @@ void imgui_handle() {
 
     ImGui::Separator();
 
-    ImGui::Text("Camera Orientation (deg)");
-    ImGui::InputFloat("Roll", &roll, 0.1f, 1.0f, "%.2f");
-    ImGui::InputFloat("Pitch", &pitch, 0.1f, 1.0f, "%.2f");
-    ImGui::InputFloat("Yaw", &yaw, 16.75f, 1.0f, "%.2f");
+    ImGui::Text("Position/Orientation");
 
+    int positionIndex = static_cast<int>(selectedPosition);
+
+    if (ImGui::Combo("Position", &positionIndex, positionNames, IM_ARRAYSIZE(positionNames))) {
+        setCameraPosition(static_cast<CameraPosition>(positionIndex));
+    }
+    ImGui::Text("Camera Orientation (deg)");
+
+    ImGui::BeginDisabled(selectedPosition != CameraPosition::Custom);
+
+    bool orientationChanged = false;
+
+    orientationChanged |= ImGui::InputFloat("Roll", &roll, 0.1f, 1.0f, "%.2f");
+    orientationChanged |= ImGui::InputFloat("Pitch", &pitch, 0.1f, 1.0f, "%.2f");
+    orientationChanged |= ImGui::InputFloat("Yaw", &yaw, 0.1f, 1.0f, "%.2f");
+
+    ImGui::EndDisabled();
+
+    if (orientationChanged) {
+        c.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
+    }
     ImGui::Separator();
 
     ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
@@ -148,19 +219,6 @@ std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Re
 
 int main() {
     std::cout << "Build system working?! " << std::endl;
-
-    const float earthRadiusKm = 6'371.0f;
-    const float geoAltitudeKm = 35'786.0f;
-    const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
-
-    const float siderealDaySec = 86'164.0f;
-    const float lunarSiderealMonthSec = 2'360'591.0f;
-    const float earthAngularSpeed = 2.0f * 3.14159265358979f / siderealDaySec;
-    const float moonAngularSpeed = 2.0f * 3.14159265358979f / lunarSiderealMonthSec;
-
-    const float moonRadiusKm = 1'737.4f;
-
-    const float METERS_TO_KM = 1.0f / 1000.0f;
 
     double accumulator = 0.0;
     double previousTime = glfwGetTime();
@@ -203,7 +261,8 @@ int main() {
             accumulator -= FIXED_DT;
         }
 
-        renderer.camera.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
+        renderer.camera.rotation = c.rotation;
+        renderer.camera.position = c.position;
 
         renderer.camera.fov = bx::toDeg(2.0f * atan(sensorHeightMm / (2.0f * focalLengthMm)));
 

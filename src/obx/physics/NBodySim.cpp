@@ -1,5 +1,4 @@
 #include "NBodySim.h"
-#include <iostream>
 
 void obx::physics::NBodySim::update(float delta_time) {
     for (size_t i = 0; i < bodies.size(); i++) {
@@ -14,7 +13,6 @@ void obx::physics::NBodySim::update(float delta_time) {
             bx::Vec3 direction = bx::normalize(bx::sub(b2->getPosition(), b1->getPosition()));
 
             Force force(bx::mul(direction, magnitude));
-            std::cout << "Force vector: " << force.vector.x << std::endl;
 
             b1->applyForce(force);
             force.vector = bx::mul(force.vector, -1.0f);
