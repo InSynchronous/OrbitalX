@@ -164,7 +164,7 @@ void obx::Renderer::initialize() {
 }
 
 void obx::Renderer::addEntity(std::shared_ptr<Entity> entity) {
-    entity->mesh.upload();
+    entity->mesh->upload();
     entities.push_back(std::move(entity));
 }
 
@@ -173,6 +173,8 @@ void obx::Renderer::addImguiCallback(void (*imgui_user_callback)()) {
 }
 
 void obx::Renderer::renderUI() {
+    ImGui::DockSpaceOverViewport(0, ImGui::GetMainViewport(),
+                                 ImGuiDockNodeFlags_PassthruCentralNode);
     ImGui::Begin("OrbitalX Debug");
 
     ImGui::Text("Performance");
@@ -254,12 +256,12 @@ void obx::Renderer::render() {
         auto &mesh = entity->mesh;
         auto &texture = entity->texture;
 
-        mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh.rotation.x, mesh.rotation.y, mesh.rotation.z,
-               mesh.position.x, mesh.position.y, mesh.position.z);
+        mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh->rotation.x, mesh->rotation.y, mesh->rotation.z,
+               mesh->position.x, mesh->position.y, mesh->position.z);
 
         bgfx::setTransform(model);
-        bgfx::setVertexBuffer(0, mesh.vertexBuffer);
-        bgfx::setIndexBuffer(mesh.indexBuffer);
+        bgfx::setVertexBuffer(0, mesh->vertexBuffer);
+        bgfx::setIndexBuffer(mesh->indexBuffer);
         bgfx::setTexture(0, sampler, texture);
 
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |

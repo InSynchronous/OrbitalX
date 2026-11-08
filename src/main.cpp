@@ -46,40 +46,50 @@ void imgui_handle() {
     ImGui::End();
 }
 
+std::shared_ptr<obx::Entity> createCelestialBody(obx::Renderer &renderer, const bx::Vec3 &position,
+                                                 float radius, const std::string &texturePath) {
+    auto mesh = std::make_unique<obx::SphereMesh>(position, bx::Vec3{0.0f, 0.0f, 0.0f}, 6, radius);
+
+    auto entity = std::make_shared<obx::Entity>(std::move(mesh));
+    renderer.addEntity(entity);
+
+    int w, h, channels;
+    stbi_uc *img = stbi_load(texturePath.c_str(), &w, &h, &channels, 4);
+
+    if (img) {
+        entity->loadTexture(img, w, h);
+        stbi_image_free(img);
+    } else {
+        std::cerr << "WARNING: Failed to load " << texturePath << '\n';
+        auto fallback = generate_checkerboard(512, 256);
+        entity->loadTexture(fallback.data(), 512, 256);
+    }
+
+    return entity;
+}
+
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
-    const float earthRadiusKm = 6371.0f;
-    const float geoAltitudeKm = 35786.0f;
+    const float earthRadiusKm = 6'371.0f;
+    const float geoAltitudeKm = 35'786.0f;
     const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
 
-    const float siderealDaySec = 86164.0f;
+    const float siderealDaySec = 86'164.0f;
     const float earthAngularSpeed = 2.0f * 3.14159265358979f / siderealDaySec;
+
+    const float moonRadiusKm = 1'737.4f;
 
     const float timeScale = 1000.0f;
 
     obx::Renderer renderer = obx::Renderer(1280, 720);
     renderer.addImguiCallback(&imgui_handle);
 
-    obx::SphereMesh earthMesh =
-        obx::SphereMesh(bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 6, earthRadiusKm);
+    auto earthEntity =
+        createCelestialBody(renderer, {0.0f, 0.0f, 0.0f}, earthRadiusKm, "assets/earth.jpg");
 
-    auto earthEntity = std::make_shared<obx::Entity>(earthMesh);
-    renderer.addEntity(earthEntity);
-
-    int w = 0, h = 0, channels = 0;
-    stbi_uc *img = stbi_load("assets/earth.jpg", &w, &h, &channels, 4);
-    if (img != nullptr) {
-        std::cout << "Loaded earth texture: " << w << "x" << h << std::endl;
-        earthEntity->loadTexture(img, w, h);
-        stbi_image_free(img);
-    } else {
-        std::cout << "WARNING: assets/earth.jpg not found (run ./build/OrbitalX "
-                     "from the repo root). Using checkerboard fallback."
-                  << std::endl;
-        auto fallback = generate_checkerboard(512, 256);
-        earthEntity->loadTexture(fallback.data(), 512, 256);
-    }
+    auto moonEntity =
+        createCelestialBody(renderer, {-10'000.0f, 0.0f, 0.0f}, moonRadiusKm, "assets/moon.jpg");
 
     renderer.camera.position = {0.0f, 0.0f, orbitDistKm};
     renderer.camera.rotation = {0.0f, bx::toRad(180.0f), 0.0f};
@@ -88,7 +98,10 @@ int main() {
         float simTime = static_cast<float>(glfwGetTime()) * timeScale;
 
         float earthAngle = simTime * earthAngularSpeed * imgui_value;
-        earthEntity->mesh.setRotation({0.0f, earthAngle, 0.0f});
+
+        // not really orbitting, just imagine you're at a point on geostationary orbit watching the
+        // earth spin
+        earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
 
         renderer.render();
     }

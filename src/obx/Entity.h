@@ -2,14 +2,15 @@
 
 #include "Mesh.h"
 #include "bgfx/bgfx.h"
+#include <memory>
 
 namespace obx {
 
 struct Entity {
-    Mesh &mesh;
+    std::unique_ptr<Mesh> mesh;
     bgfx::TextureHandle texture;
 
-    Entity(Mesh &mesh) : mesh(mesh), texture(BGFX_INVALID_HANDLE) {}
+    Entity(std::unique_ptr<Mesh> mesh) : mesh(std::move(mesh)), texture(BGFX_INVALID_HANDLE) {}
 
     void loadTexture(const uint8_t *pixels, uint16_t w, uint16_t h) {
         // push to gpu memory
