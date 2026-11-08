@@ -1,4 +1,5 @@
 #include "Renderer.h"
+#include "Entity.h"
 #include "bgfx/bgfx.h"
 #include <iostream>
 
@@ -11,6 +12,8 @@
 
 #include <bx/math.h>
 
+using bx::mtxSRT;
+
 void obx::Renderer::setupGLFW() {
     if (!glfwInit()) {
         std::cout << "glfw init failed -1";
@@ -19,8 +22,7 @@ void obx::Renderer::setupGLFW() {
 
     glfwWindowHint(GLFW_CLIENT_API, GLFW_NO_API);
 
-    GLFWwindow *window =
-        glfwCreateWindow(width, height, "orbitalX", nullptr, nullptr);
+    GLFWwindow *window = glfwCreateWindow(width, height, "orbitalX", nullptr, nullptr);
 
     if (!window) {
         std::cout << "glfw window failed to open -1";
@@ -32,20 +34,17 @@ void obx::Renderer::setupGLFW() {
 #ifdef __APPLE__
     void *nativeWindow = glfwGetCocoaWindow(window);
     void *nativeDisplay = nullptr;
-    bgfx::NativeWindowHandleType::Enum platformType =
-        bgfx::NativeWindowHandleType::Default;
+    bgfx::NativeWindowHandleType::Enum platformType = bgfx::NativeWindowHandleType::Default;
 #else
     void *nativeWindow = nullptr;
     void *nativeDisplay = nullptr;
-    bgfx::NativeWindowHandleType::Enum platformType =
-        bgfx::NativeWindowHandleType::Default;
+    bgfx::NativeWindowHandleType::Enum platformType = bgfx::NativeWindowHandleType::Default;
     if (glfwGetPlatform() == GLFW_PLATFORM_WAYLAND) {
         nativeWindow = glfwGetWaylandWindow(window);
         nativeDisplay = glfwGetWaylandDisplay();
         platformType = bgfx::NativeWindowHandleType::Wayland;
     } else if (glfwGetPlatform() == GLFW_PLATFORM_X11) {
-        nativeWindow = reinterpret_cast<void *>(
-            static_cast<uintptr_t>(glfwGetX11Window(window)));
+        nativeWindow = reinterpret_cast<void *>(static_cast<uintptr_t>(glfwGetX11Window(window)));
         nativeDisplay = glfwGetX11Display();
     } else {
         std::cerr << "Unsupported platform\n";
@@ -92,19 +91,14 @@ bgfx::ShaderHandle obx::Renderer::loadShader(const char *path) {
         return BGFX_INVALID_HANDLE;
     }
 
-    std::vector<char> data{std::istreambuf_iterator<char>(file),
-                           std::istreambuf_iterator<char>()};
+    std::vector<char> data{std::istreambuf_iterator<char>(file), std::istreambuf_iterator<char>()};
 
-    const bgfx::Memory *memory =
-        bgfx::copy(data.data(), static_cast<uint32_t>(data.size()));
-    std::cout << "Loading shader: " << path
-          << " (" << data.size() << " bytes)"
-          << " Renderer: "
-          << bgfx::getRendererName(bgfx::getRendererType())
-          << '\n';
+    const bgfx::Memory *memory = bgfx::copy(data.data(), static_cast<uint32_t>(data.size()));
+    std::cout << "Loading shader: " << path << " (" << data.size() << " bytes)"
+              << " Renderer: " << bgfx::getRendererName(bgfx::getRendererType()) << '\n';
 
     return bgfx::createShader(memory);
-    }
+}
 
 void obx::Renderer::buildPrograms(std::string shaderDirectory) {
     std::string vertexPath = std::string(shaderDirectory) + "vs_cube.bin";
@@ -146,38 +140,31 @@ void obx::Renderer::initialize() {
 
     const char *shaderDirectory = nullptr;
 
-switch (bgfx::getRendererType()) {
-case bgfx::RendererType::Metal:
-    shaderDirectory = "assets/shaders/metal/";
-    break;
+    switch (bgfx::getRendererType()) {
+    case bgfx::RendererType::Metal:
+        shaderDirectory = "assets/shaders/metal/";
+        break;
 
-case bgfx::RendererType::Vulkan:
-    shaderDirectory = "assets/shaders/spirv/";
-    break;
+    case bgfx::RendererType::Vulkan:
+        shaderDirectory = "assets/shaders/spirv/";
+        break;
 
-default:
-    std::cerr << "Unsupported renderer: "
-              << bgfx::getRendererName(bgfx::getRendererType())
-              << '\n';
+    default:
+        std::cerr << "Unsupported renderer: " << bgfx::getRendererName(bgfx::getRendererType())
+                  << '\n';
 
-    bgfx::shutdown();
-    glfwTerminate();
-    std::exit(-1);
-}    this->buildPrograms(shaderDirectory);
+        bgfx::shutdown();
+        glfwTerminate();
+        std::exit(-1);
+    }
+    this->buildPrograms(shaderDirectory);
 
     sampler = bgfx::createUniform("s_texColor", bgfx::UniformType::Sampler);
 }
 
-void obx::Renderer::addMesh(std::unique_ptr<Mesh> mesh) {
-    mesh->upload();
-    meshes.push_back(std::move(mesh));
-}
-
-void obx::Renderer::loadTexture(const uint8_t *pixels, uint16_t w, uint16_t h) {
-    const bgfx::Memory *memory = bgfx::copy(pixels, w * h * 4);
-
-    atlas = bgfx::createTexture2D(w, h, false, 1, bgfx::TextureFormat::RGBA8,
-                                  BGFX_SAMPLER_V_CLAMP, memory);
+void obx::Renderer::addEntity(std::shared_ptr<Entity> entity) {
+    entity->mesh.upload();
+    entities.push_back(std::move(entity));
 }
 
 void obx::Renderer::renderUI() {
@@ -195,20 +182,21 @@ void obx::Renderer::renderUI() {
 
     ImGui::Text("Backend: %s", bgfx::getRendererName(bgfx::getRendererType()));
 
-    ImGui::Text("Meshes: %zu", meshes.size());
+    ImGui::Text("Meshes: %zu", entities.size());
 
     int fbw, fbh;
     glfwGetFramebufferSize(info.window, &fbw, &fbh);
     ImGui::Text("Framebuffer: %d x %d", fbw, fbh);
-    ImGui::Text("Cam: %.0f, %.0f, %.0f", camera.position.x,
-                camera.position.y, camera.position.z);
+    ImGui::Text("Cam: %.0f, %.0f, %.0f", camera.position.x, camera.position.y, camera.position.z);
 
     ImGui::Spacing();
-    ImGui::Text("Input");
-    ImGui::Separator();
+    ImGui::Text("Set Speed Multiplier:");
+    if (ImGui::InputInt("##speed", &imgui_value)) {
+        std::cout << "value was changed! " << std::endl;
+    }
 
-    ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x,
-                ImGui::GetIO().MousePos.y);
+    ImGui::Separator();
+    ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
 
     ImGui::End();
 
@@ -239,11 +227,9 @@ void obx::Renderer::render() {
         resetHeight = height;
     }
 
-    bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(width),
-                      static_cast<uint16_t>(height));
+    bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
 
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x0b1028ff,
-                       1.0f, 0);
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x1a1a1aff, 1.0f, 0);
 
     float model[16];
     float view[16];
@@ -253,29 +239,30 @@ void obx::Renderer::render() {
 
     float cameraTransform[16];
 
-    bx::mtxSRT(cameraTransform, 1.0f, 1.0f, 1.0f, camera.rotation.x,
-               camera.rotation.y, camera.rotation.z, camera.position.x,
-               camera.position.y, camera.position.z);
+    bx::mtxSRT(cameraTransform, 1.0f, 1.0f, 1.0f, camera.rotation.x, camera.rotation.y,
+               camera.rotation.z, camera.position.x, camera.position.y, camera.position.z);
 
     bx::mtxInverse(view, cameraTransform);
 
-    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 100.0f,
-                500000.0f, bgfx::getCaps()->homogeneousDepth);
+    bx::mtxProj(projection, 60.0f, static_cast<float>(width) / height, 100.0f, 500000.0f,
+                bgfx::getCaps()->homogeneousDepth);
 
     bgfx::setViewTransform(0, view, projection);
 
-    for (auto &mesh : meshes) {
-        bx::mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh->rotation.x, mesh->rotation.y,
-                   mesh->rotation.z, mesh->position.x, mesh->position.y,
-                   mesh->position.z);
+    for (auto &entity : entities) {
+        auto &mesh = entity->mesh;
+        auto &texture = entity->texture;
+
+        mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh.rotation.x, mesh.rotation.y, mesh.rotation.z,
+               mesh.position.x, mesh.position.y, mesh.position.z);
 
         bgfx::setTransform(model);
-        bgfx::setVertexBuffer(0, mesh->vertexBuffer);
-        bgfx::setIndexBuffer(mesh->indexBuffer);
-        bgfx::setTexture(0, sampler, atlas);
+        bgfx::setVertexBuffer(0, mesh.vertexBuffer);
+        bgfx::setIndexBuffer(mesh.indexBuffer);
+        bgfx::setTexture(0, sampler, texture);
 
-        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A |
-                       BGFX_STATE_WRITE_Z | BGFX_STATE_DEPTH_TEST_LESS);
+        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
+                       BGFX_STATE_DEPTH_TEST_LESS);
 
         bgfx::submit(0, program);
     }

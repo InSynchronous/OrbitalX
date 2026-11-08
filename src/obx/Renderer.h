@@ -1,5 +1,6 @@
 #pragma once
 
+#include "Entity.h"
 #include "ImGuiRenderer.h"
 #include "Mesh.h"
 #include "Vertex.h"
@@ -41,10 +42,9 @@ class Renderer {
     bgfx::IndexBufferHandle indexBuffer;
     bgfx::VertexBufferHandle vertexBuffer;
     bgfx::ProgramHandle program;
-    bgfx::TextureHandle atlas;
     bgfx::UniformHandle sampler;
 
-    std::vector<std::unique_ptr<Mesh>> meshes;
+    std::vector<std::shared_ptr<Entity>> entities;
     ImGuiRenderer imguiRenderer;
 
     bgfx::ShaderHandle loadShader(const char *path);
@@ -56,16 +56,13 @@ class Renderer {
     void buildPrograms(std::string shaderDirectory);
 
   public:
-    Renderer(int width, int height) : width(width), height(height) {
-        this->initialize();
-    }
+    Renderer(int width, int height) : width(width), height(height) { this->initialize(); }
     bool windowShouldClose() { return glfwWindowShouldClose(info.window); }
     void initialize();
-    void addMesh(std::unique_ptr<Mesh> mesh);
-    void loadTexture(const uint8_t *pixels, uint16_t w,
-                     uint16_t h); // rgba 1 byte each (4.29 billion)
+    void addEntity(std::shared_ptr<Entity> entity);
     void render();
 
     Camera camera{{0, 0, 0}, {0, 0, 0}};
+    int imgui_value = 1;
 };
 } // namespace obx
