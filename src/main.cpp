@@ -3,6 +3,8 @@
 #include "obx/gfx_engine/Entity.h"
 #include "obx/gfx_engine/Renderer.h"
 #include "obx/gfx_engine/SphereMesh.h"
+#include "obx/physics/CelestialBody.h"
+#include "obx/physics/NBodySim.h"
 #include "stb_image.h"
 #include <iostream>
 #include <memory>
@@ -33,7 +35,7 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 
 } // namespace
 
-static int speed_mul = 1;
+static int speed_mul = 1000;
 static float focalLengthMm = 134.0f;
 static float sensorHeightMm = 37.7f;
 
@@ -77,7 +79,7 @@ void imgui_handle() {
     ImGui::Begin("Userspace box");
 
     ImGui::Text("Simulation");
-    ImGui::InputInt("Speed Multiplier", &speed_mul);
+    ImGui::InputInt("Speed Multiplier", &speed_mul, 10);
 
     ImGui::Separator();
 
@@ -138,14 +140,18 @@ int main() {
     const float geoAltitudeKm = 35'786.0f;
     const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
 
-    const float siderealDaySec = 86'164.0f; // day in seconds
+    const float siderealDaySec = 86'164.0f;
     const float lunarSiderealMonthSec = 2'360'591.0f;
     const float earthAngularSpeed = 2.0f * 3.14159265358979f / siderealDaySec;
     const float moonAngularSpeed = 2.0f * 3.14159265358979f / lunarSiderealMonthSec;
 
     const float moonRadiusKm = 1'737.4f;
 
-    const float timeScale = 1000.0f;
+    const float METERS_TO_KM = 1.0f / 1000.0f;
+
+    const double FIXED_DT = 1.0 / 10.0;
+    double accumulator = 0.0;
+    double previousTime = glfwGetTime();
 
     obx::gfx_engine::Renderer renderer = obx::gfx_engine::Renderer(1280, 720);
     renderer.addImguiCallback(&imgui_handle);
@@ -159,20 +165,44 @@ int main() {
     renderer.camera.position = {0.0f, 0.0f, orbitDistKm};
     renderer.camera.rotation = {0.0f, bx::toRad(180.0f), 0.0f};
 
+    auto earth =
+        std::make_shared<obx::physics::CelestialBody>(5.9722e24, bx::Vec3{0.0f, 0.0f, 0.0f});
+
+    auto moon = std::make_shared<obx::physics::CelestialBody>(
+        7.342e22, bx::Vec3{-384'399'000.0f, 0.0f, 0.0f});
+
+    obx::physics::NBodySim simulation;
+
+    simulation.addBody(earth);
+    simulation.addBody(moon);
+
     while (!renderer.windowShouldClose()) {
+        double currentTime = glfwGetTime();
+        double frameTime = currentTime - previousTime;
+        previousTime = currentTime;
+
+        frameTime = std::min(frameTime, 0.25);
+
+        accumulator += frameTime * speed_mul;
+
+        while (accumulator >= FIXED_DT) {
+            simulation.update(FIXED_DT);
+            accumulator -= FIXED_DT;
+        }
+
         renderer.camera.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
 
         renderer.camera.fov = bx::toDeg(2.0f * atan(sensorHeightMm / (2.0f * focalLengthMm)));
 
-        float simTime = static_cast<float>(glfwGetTime()) * timeScale;
-        float earthAngle = simTime * earthAngularSpeed * speed_mul;
-        float moonAngle = simTime * moonAngularSpeed * speed_mul;
+        double simTime = glfwGetTime() * speed_mul;
+        float earthAngle = simTime * earthAngularSpeed;
+        float moonAngle = simTime * moonAngularSpeed;
 
-        // not really orbitting, just imagine you're at a point on geostationary orbit watching the
-        // earth spin. Sorta defeats the purpose of geoSTATIONARY orbit but yea
         earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
+        earthEntity->mesh->setPosition(bx::mul(earth->getPosition(), METERS_TO_KM));
 
         moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
+        moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
 
         renderer.render();
     }
