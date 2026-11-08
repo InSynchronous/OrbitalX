@@ -35,7 +35,12 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 
 } // namespace
 
-static int speed_mul = 1000;
+static int speed_mul = 1000; // 1000x speed
+static double FIXED_DT = 1;  // 1 second
+
+static double moonx = 0;
+static double moonz = 0;
+
 static float focalLengthMm = 134.0f;
 static float sensorHeightMm = 37.7f;
 
@@ -76,13 +81,17 @@ void setCameraSensor(CameraSensor sensor) {
 }
 
 void imgui_handle() {
-    ImGui::Begin("Userspace box");
+    ImGui::Begin("Simulation Box");
 
     ImGui::Text("Simulation");
     ImGui::InputInt("Speed Multiplier", &speed_mul, 10);
+    ImGui::InputDouble("Simulation Timestep (seconds)", &FIXED_DT, 0.1);
+
+    ImGui::End();
 
     ImGui::Separator();
 
+    ImGui::Begin("Camera Box");
     ImGui::Text("Camera Settings");
 
     int sensorIndex = static_cast<int>(selectedSensor);
@@ -106,6 +115,10 @@ void imgui_handle() {
 
     ImGui::Text("Mouse: %.0f, %.0f", ImGui::GetIO().MousePos.x, ImGui::GetIO().MousePos.y);
 
+    ImGui::End();
+
+    ImGui::Begin("Info Box");
+    ImGui::Text("Moon X Z: %.0f, %.0f", moonx, moonz);
     ImGui::End();
 }
 
@@ -149,7 +162,6 @@ int main() {
 
     const float METERS_TO_KM = 1.0f / 1000.0f;
 
-    const double FIXED_DT = 1.0f / 1.0f;
     double accumulator = 0.0;
     double previousTime = glfwGetTime();
 
@@ -169,7 +181,8 @@ int main() {
         std::make_shared<obx::physics::CelestialBody>(5.9722e24, bx::Vec3{0.0f, 0.0f, 0.0f});
 
     auto moon = std::make_shared<obx::physics::CelestialBody>(
-        7.342e22, bx::Vec3{-384'399'000.0f, 0.0f, 0.0f});
+        7.342e22, bx::Vec3{-384'399'000.0f, 0.0f, 0.0f}, bx::Vec3{0, 0, 0},
+        bx::Vec3{0, 0, -1018.0f});
 
     obx::physics::NBodySim simulation;
 
@@ -204,7 +217,8 @@ int main() {
         moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
         moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
 
-        std::cout << "Moon position: " << moon->getPosition().x << std::endl;
+        moonx = moon->getPosition().x;
+        moonz = moon->getPosition().z;
 
         renderer.render();
     }
