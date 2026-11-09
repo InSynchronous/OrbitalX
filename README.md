@@ -1,11 +1,14 @@
 # OrbitalX
 A spacecraft orbital analysis and simulation technology demonstrator written in C++ with the bgfx graphics abstraction layer.
 
-![Moon crashing into the earth at 10,000x simulated speed](images/video.gif)
-Moon crashing into the earth at 10,000x simulated speed. `dt = 1.0f` Simulated with N-Body newtonian gravitational mechanics using euler integration.
+![Image of a SpaceX Dragon somehow in geostationary orbit captured from a simulated Sony Full-Frame sensor mounted to a 134mm lens](images/dragon.png)
+Image of a SpaceX Dragon somehow in geostationary orbit captured from a simulated Sony Full-Frame sensor mounted to a 134mm lens. (note: the SpaceX Dragon has never gone to geostationary orbit)
 
 ![Image of the moon taken with a simulated Sony Full-Frame sensor mounted to a 1000mm lens](images/image.png)
 Image of the moon taken with a simulated Sony Full-Frame sensor mounted to a 1000mm lens.
+
+![Moon crashing into the earth at 10,000x simulated speed](images/video.gif)
+Moon crashing into the earth at 10,000x simulated speed. `dt = 1.0f` Simulated with N-Body newtonian gravitational mechanics using euler integration.
 
 ## Building from scratch
 Clone this project, recursively:
