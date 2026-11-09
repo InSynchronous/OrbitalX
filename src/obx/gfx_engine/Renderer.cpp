@@ -248,7 +248,8 @@ void obx::gfx_engine::Renderer::render() {
     bx::mtxInverse(view, cameraTransform);
 
     // 120 deg fov
-    bx::mtxProj(projection, camera.fov, static_cast<float>(width) / height, 100.0f, 500000.0f,
+    // 0.05f = 5 meter near clipping plane
+    bx::mtxProj(projection, camera.fov, static_cast<float>(width) / height, 0.05f, 500000.0f,
                 bgfx::getCaps()->homogeneousDepth);
 
     bgfx::setViewTransform(0, view, projection);

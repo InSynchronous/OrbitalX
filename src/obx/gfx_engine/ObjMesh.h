@@ -14,12 +14,16 @@ class ObjMesh : public Mesh {
     std::vector<uint16_t> indices;
 
     Vertex spherify(Vertex point);
-    void loadFromObj(const std::string &path);
+    void loadFromObj(const std::string &path, float scale);
 
   public:
     ObjMesh(bx::Vec3 position, bx::Vec3 rotation, const std::string &path)
         : Mesh{position, rotation} {
-        loadFromObj(path);
+        loadFromObj(path, 1);
+    }
+    ObjMesh(bx::Vec3 position, bx::Vec3 rotation, const std::string &path, float scale)
+        : Mesh{position, rotation} {
+        loadFromObj(path, scale);
     }
 
     void upload() override;

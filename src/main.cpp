@@ -1,6 +1,7 @@
 #include "bx/math.h"
 #include "imgui.h"
 #include "obx/gfx_engine/Entity.h"
+#include "obx/gfx_engine/ObjMesh.h"
 #include "obx/gfx_engine/Renderer.h"
 #include "obx/gfx_engine/SphereMesh.h"
 #include "obx/physics/CelestialBody.h"
@@ -61,7 +62,12 @@ static float roll = 0.0f;
 static float pitch = 0.0f;
 static float yaw = 0.0f;
 
+static float dragon_roll = 0.0f;
+static float dragon_pitch = 0.0f;
+static float dragon_yaw = 0.0f;
+
 static obx::gfx_engine::Camera c = {
+
     {0.0f, 0.0f, orbitDistKm},                                    // position
     {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)} // orientation
 };
@@ -191,6 +197,14 @@ void imgui_handle() {
     ImGui::Begin("Info Box");
     ImGui::Text("Moon X Z: %.0f, %.0f", moonx, moonz);
     ImGui::End();
+
+    // Dragon Container:
+    ImGui::Begin("Dragon");
+    ImGui::Text("Spacecraft Orientation");
+    ImGui::InputFloat("Roll", &dragon_roll, 0.1f, 1.0f, "%.2f");
+    ImGui::InputFloat("Pitch", &dragon_pitch, 0.1f, 1.0f, "%.2f");
+    ImGui::InputFloat("Yaw", &dragon_yaw, 0.1f, 1.0f, "%.2f");
+    ImGui::End();
 }
 
 std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Renderer &renderer,
@@ -223,30 +237,40 @@ int main() {
     double accumulator = 0.0;
     double previousTime = glfwGetTime();
 
+    // Initialize Renderer
     obx::gfx_engine::Renderer renderer = obx::gfx_engine::Renderer(1280, 720);
     renderer.addImguiCallback(&imgui_handle);
 
+    // Create 3D Objects
     auto earthEntity =
-        createCelestialBody(renderer, {0.0f, 0.0f, 0.0f}, earthRadiusKm, "assets/earth.jpg");
+        createCelestialBody(renderer, {0.0f, 0.0f, 0.0f}, earthRadiusKm, "assets/images/earth.jpg");
+    auto moonEntity = createCelestialBody(renderer, {-384'399.0f, 0.0f, 0.0f}, moonRadiusKm,
+                                          "assets/images/moon.jpg");
 
-    auto moonEntity =
-        createCelestialBody(renderer, {-384'399.0f, 0.0f, 0.0f}, moonRadiusKm, "assets/moon.jpg");
+    // Dragon spacecraft
+    // model is in meters, but simulation is in kilometers
+    auto mesh = std::make_unique<obx::gfx_engine::ObjMesh>(
+        bx::Vec3{0.0f, 0.0f, orbitDistKm - 0.1f}, bx::Vec3{0.0f, 0.0f, 0.0f},
+        "assets/models/dragon.obj", METERS_TO_KM);
+    auto dragon = std::make_shared<obx::gfx_engine::Entity>(std::move(mesh));
+    renderer.addEntity(dragon);
+    auto fallback = generate_checkerboard(512, 256);
+    dragon->loadTexture(fallback.data(), 512, 256);
 
-    renderer.camera.position = {0.0f, 0.0f, orbitDistKm};
-    renderer.camera.rotation = {0.0f, bx::toRad(180.0f), 0.0f};
-
+    // Create simulation objects
     auto earth =
         std::make_shared<obx::physics::CelestialBody>(5.9722e24, bx::Vec3{0.0f, 0.0f, 0.0f});
-
     auto moon = std::make_shared<obx::physics::CelestialBody>(
         7.342e22, bx::Vec3{-384'399'000.0f, 0.0f, 0.0f}, bx::Vec3{0, 0, 0},
         bx::Vec3{0, 0, -1018.0f});
 
+    // Initialize simulation
     obx::physics::NBodySim simulation;
 
     simulation.addBody(earth);
     simulation.addBody(moon);
 
+    // Main Loop
     while (!renderer.windowShouldClose()) {
         double currentTime = glfwGetTime();
         double frameTime = currentTime - previousTime;
@@ -254,6 +278,10 @@ int main() {
 
         frameTime = std::min(frameTime, 0.25);
 
+        // Complete the amount of time necessary for the time between last frame scaled to the
+        // current timescale
+        // eg. 60fps -> 0.0167 * time scale = amount of time to simulate -> divide by fixed_dt to
+        // get simulation frame count
         accumulator += frameTime * speed_mul;
 
         while (accumulator >= FIXED_DT) {
@@ -261,21 +289,31 @@ int main() {
             accumulator -= FIXED_DT;
         }
 
-        renderer.camera.rotation = c.rotation;
-        renderer.camera.position = c.position;
+        // set camera sync with imgui
+        renderer.camera = c;
 
+        // @todo fix this its stupid
         renderer.camera.fov = bx::toDeg(2.0f * atan(sensorHeightMm / (2.0f * focalLengthMm)));
 
+        // REAL time
         double simTime = glfwGetTime() * speed_mul;
+
+        // simulated earth/moon spin
         float earthAngle = simTime * earthAngularSpeed;
         float moonAngle = simTime * moonAngularSpeed;
 
+        // Set earth 3d object to expected angle and simulated position
         earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
         earthEntity->mesh->setPosition(bx::mul(earth->getPosition(), METERS_TO_KM));
 
         moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
         moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
 
+        // configure dragon
+        dragon->mesh->setRotation(
+            {bx::toRad(-dragon_pitch), bx::toRad(180.0f - dragon_yaw), bx::toRad(dragon_roll)});
+
+        // for imgui
         moonx = moon->getPosition().x;
         moonz = moon->getPosition().z;
 

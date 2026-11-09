@@ -48,3 +48,20 @@ You should now have an executable in build:
 ```sh
 ./build/OrbitalX
 ```
+
+## Copyright
+This project is distrobuted under the MIT licence. See `LICENCE`.
+Exceptions to this licencing include the following:
+
+```sh
+$ tree assets
+assets
+├── images
+│   ├── earth.jpg  # Image Credit: NASA
+│   └── moon.jpg   # Image Credit: NASA
+├── models
+│   └── Dragon.obj # Model Credit: House-From-Scratch (CGTrader)
+```
+
+Thanks to whoever runs this page for the royalty free SpaceX Dragon model. Love from the USA :D.
+[House-From-Scratch](https://www.cgtrader.com/designers/house-from-scratch)

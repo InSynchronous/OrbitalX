@@ -9,7 +9,7 @@
 #include <string>
 #include <vector>
 
-void obx::gfx_engine::ObjMesh::loadFromObj(const std::string &path) {
+void obx::gfx_engine::ObjMesh::loadFromObj(const std::string &path, float scale) {
     std::ifstream file(path);
 
     if (!file.is_open()) {
@@ -31,14 +31,14 @@ void obx::gfx_engine::ObjMesh::loadFromObj(const std::string &path) {
             float x, y, z;
             stream >> x >> y >> z;
 
-            positions.push_back({x, y, z});
+            positions.push_back({x * scale, y * scale, z * scale});
         }
 
         else if (type == "vt") {
             float u, v;
             stream >> u >> v;
 
-            texCoords.push_back({u, v});
+            texCoords.push_back({u * scale, v * scale});
         }
 
         else if (type == "f") {
