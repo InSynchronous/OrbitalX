@@ -7,6 +7,9 @@ Image of a SpaceX Dragon somehow in geostationary orbit captured from a simulate
 ![Image of the moon taken with a simulated Sony Full-Frame sensor mounted to a 1000mm lens](images/image.png)
 Image of the moon taken with a simulated Sony Full-Frame sensor mounted to a 1000mm lens.
 
+![Actual representation of what Africa would look like from a 400km orbit if taken with a 5mm lens](images/fisheye.png)
+Distortion effect observed from a simulated 5mm lens mounted on a Full-Frame Sony Camera flying above Africa. [That's not a bug btw, thats actually how it looks](https://science.nasa.gov/earth/earth-observatory/fisheye-over-sinai-147993/)
+
 ![Moon crashing into the earth at 10,000x simulated speed](images/video.gif)
 Moon crashing into the earth at 10,000x simulated speed. `dt = 1.0f` Simulated with N-Body newtonian gravitational mechanics using euler integration.
 

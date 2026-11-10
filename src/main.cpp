@@ -38,7 +38,8 @@ std::vector<uint8_t> generate_checkerboard(int width, int height) {
 
 const float earthRadiusKm = 6'371.0f;
 const float geoAltitudeKm = 35'786.0f;
-const float orbitDistKm = earthRadiusKm + geoAltitudeKm;
+const float issAltitudeKm = 400.0f;
+float orbitDistKm = earthRadiusKm + geoAltitudeKm;
 
 const float siderealDaySec = 86'164.0f;
 const float lunarSiderealMonthSec = 2'360'591.0f;
@@ -65,6 +66,7 @@ static float yaw = 0.0f;
 static float dragon_roll = 0.0f;
 static float dragon_pitch = 0.0f;
 static float dragon_yaw = 0.0f;
+static bx::Vec3 dragon_position = {0.0f, 0.0f, orbitDistKm - 0.1f};
 
 static obx::gfx_engine::Camera c = {
 
@@ -79,9 +81,10 @@ static CameraSensor selectedSensor = CameraSensor::SonyFullFrame;
 static const char *sensorNames[] = {"Custom", "Sony Full Frame", "Sony APS-C", "Micro Four Thirds",
                                     "GOES-16 GLM"};
 
-enum class CameraPosition { Custom, Geostationary, PolarNorth, PolarSouth };
+enum class CameraPosition { Custom, Geostationary, LowEarthOrbit, PolarNorth, PolarSouth };
 static CameraPosition selectedPosition = CameraPosition::Geostationary;
-static const char *positionNames[] = {"Custom", "Geostationary", "PolarNorth", "PolarSouth"};
+static const char *positionNames[] = {"Custom", "Geostationary", "LowEarthOrbit", "PolarNorth",
+                                      "PolarSouth"};
 
 void setCameraSensor(CameraSensor sensor) {
     selectedSensor = sensor;
@@ -113,6 +116,13 @@ void setCameraPosition(CameraPosition position) {
 
     switch (position) {
     case CameraPosition::Geostationary:
+        c.position = {0.0f, 0.0f, orbitDistKm};
+        roll = pitch = yaw = 0.0f;
+        break;
+
+    case CameraPosition::LowEarthOrbit:
+        orbitDistKm = earthRadiusKm + issAltitudeKm;
+        dragon_position = {0.0f, 0.0f, orbitDistKm - 0.1f};
         c.position = {0.0f, 0.0f, orbitDistKm};
         roll = pitch = yaw = 0.0f;
         break;
@@ -211,7 +221,7 @@ std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Re
                                                              const bx::Vec3 &position, float radius,
                                                              const std::string &texturePath) {
     auto mesh = std::make_unique<obx::gfx_engine::SphereMesh>(position, bx::Vec3{0.0f, 0.0f, 0.0f},
-                                                              6, radius);
+                                                              32, radius);
 
     auto entity = std::make_shared<obx::gfx_engine::Entity>(std::move(mesh));
     renderer.addEntity(entity);
@@ -250,8 +260,7 @@ int main() {
     // Dragon spacecraft
     // model is in meters, but simulation is in kilometers
     auto mesh = std::make_unique<obx::gfx_engine::ObjMesh>(
-        bx::Vec3{0.0f, 0.0f, orbitDistKm - 0.1f}, bx::Vec3{0.0f, 0.0f, 0.0f},
-        "assets/models/dragon.obj", METERS_TO_KM);
+        dragon_position, bx::Vec3{0.0f, 0.0f, 0.0f}, "assets/models/dragon.obj", METERS_TO_KM);
     auto dragon = std::make_shared<obx::gfx_engine::Entity>(std::move(mesh));
     renderer.addEntity(dragon);
     auto fallback = generate_checkerboard(512, 256);
@@ -310,6 +319,7 @@ int main() {
         moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
 
         // configure dragon
+        dragon->mesh->setPosition(dragon_position);
         dragon->mesh->setRotation(
             {bx::toRad(-dragon_pitch), bx::toRad(180.0f - dragon_yaw), bx::toRad(dragon_roll)});
 
