@@ -1,5 +1,6 @@
 #include "bx/math.h"
 #include "imgui.h"
+#include "libsgp4/DateTime.h"
 #include "obx/gfx_engine/Entity.h"
 #include "obx/gfx_engine/ObjMesh.h"
 #include "obx/gfx_engine/Renderer.h"
@@ -73,6 +74,10 @@ static float yaw = 0.0f;
 static float dragon_roll = 0.0f;
 static float dragon_pitch = 0.0f;
 static float dragon_yaw = 0.0f;
+
+static libsgp4::DateTime timeNow;
+static libsgp4::DateTime simEpoch; // TLE epoch, never changes
+static double simSeconds = 0.0;    // seconds since simEpoch
 
 static obx::gfx_engine::Camera c = {
 
@@ -169,6 +174,7 @@ void imgui_handle() {
     ImGui::Begin("Simulation Box");
 
     ImGui::Text("Simulation");
+    ImGui::TextUnformatted(timeNow.ToString().c_str());
     ImGui::InputInt("Speed Multiplier", &speed_mul, 10);
     ImGui::InputDouble("Simulation Timestep (seconds)", &FIXED_DT, 0.1);
 
@@ -299,6 +305,10 @@ int main() {
                      "2 A0882  51.6322 297.6644 0007292   8.9462 351.1656 15.49289712  6377");
     auto dragon = std::make_shared<obx::physics::Satelite>(tle);
 
+    simEpoch = tle.Epoch();
+    simSeconds = 0.0;
+    timeNow = simEpoch;
+
     // Initialize simulation
     obx::physics::NBodySim planetSimulation;
 
@@ -325,8 +335,12 @@ int main() {
         while (accumulator >= FIXED_DT) {
             planetSimulation.update(FIXED_DT);
             sateliteSimulation.update(FIXED_DT);
+
             accumulator -= FIXED_DT;
+            simSeconds += FIXED_DT;
         }
+
+        timeNow = simEpoch.AddSeconds(simSeconds);
 
         // configure dragon
         // Satelite::getPosition() is already in kilometers (SGP4 native units)
@@ -349,8 +363,8 @@ int main() {
         // @todo fix this its stupid
         renderer.camera.fov = bx::toDeg(2.0f * atan(sensorHeightMm / (2.0f * focalLengthMm)));
 
-        // REAL time
-        double simTime = glfwGetTime() * speed_mul;
+        // simulated time
+        double simTime = simSeconds;
 
         // simulated earth/moon spin
         float earthAngle = simTime * earthAngularSpeed;

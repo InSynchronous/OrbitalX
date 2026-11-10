@@ -8,8 +8,7 @@ libsgp4::TimeSpan obx::physics::Satelite::ToTimeSpan(float delta_ms) {
 }
 
 void obx::physics::Satelite::step(float delta_time) {
-    ms_elapsed += delta_time;
-    libsgp4::DateTime t = tle.Epoch() + this->ToTimeSpan(ms_elapsed);
+    t = t + this->ToTimeSpan(delta_time);
 
     libsgp4::Eci eci = sgp4.FindPosition(t);
     libsgp4::Vector pos = eci.Position();

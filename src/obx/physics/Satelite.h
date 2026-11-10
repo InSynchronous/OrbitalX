@@ -15,10 +15,11 @@ class Satelite {
 
     libsgp4::TimeSpan ToTimeSpan(float delta_ms);
 
-    float ms_elapsed = 0;
-
   public:
-    Satelite(libsgp4::Tle tle) : tle(tle), sgp4(tle), position{0}, rotation{0}, velocity{0} {};
+    Satelite(libsgp4::Tle tle)
+        : tle(tle), sgp4(tle), t(tle.Epoch()), position{0}, rotation{0}, velocity{0} {};
+
+    libsgp4::DateTime t;
 
     bx::Vec3 getPosition() const { return position; }
 
