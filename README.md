@@ -38,14 +38,6 @@ make osx-arm64-release
 
 This will take an insane amount of time. Be aware.
 
-Build SGP4:
-```
-cd submodules/sgp4
-mkdir build && cd build
-cmake ..
-cmake --build .
-```
-
 Ensure `GLFW` is installed.
 
 Linux:

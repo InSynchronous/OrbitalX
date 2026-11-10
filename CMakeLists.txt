@@ -39,10 +39,29 @@ set_target_properties(bimg PROPERTIES
     IMPORTED_LOCATION "${BGFX_BUILD}/libbimgRelease.a"
 )
 
-# SGP4
-add_library(sgp4 STATIC IMPORTED)
-set_target_properties(sgp4 PROPERTIES
-    IMPORTED_LOCATION "${SGP4_ROOT}/build/libsgp4/libsgp4.a"
+# SGP4 (built from source)
+add_library(sgp4 STATIC
+    ${SGP4_ROOT}/libsgp4/CoordGeodetic.cpp
+    ${SGP4_ROOT}/libsgp4/CoordTopocentric.cpp
+    ${SGP4_ROOT}/libsgp4/CsvTleLoader.cpp
+    ${SGP4_ROOT}/libsgp4/DateTime.cpp
+    ${SGP4_ROOT}/libsgp4/DecayedException.cpp
+    ${SGP4_ROOT}/libsgp4/Eci.cpp
+    ${SGP4_ROOT}/libsgp4/Globals.cpp
+    ${SGP4_ROOT}/libsgp4/Observer.cpp
+    ${SGP4_ROOT}/libsgp4/OrbitalElements.cpp
+    ${SGP4_ROOT}/libsgp4/SGP4.cpp
+    ${SGP4_ROOT}/libsgp4/SatelliteException.cpp
+    ${SGP4_ROOT}/libsgp4/SolarPosition.cpp
+    ${SGP4_ROOT}/libsgp4/TimeSpan.cpp
+    ${SGP4_ROOT}/libsgp4/Tle.cpp
+    ${SGP4_ROOT}/libsgp4/TleException.cpp
+    ${SGP4_ROOT}/libsgp4/Util.cpp
+    ${SGP4_ROOT}/libsgp4/Vector.cpp
+)
+
+target_include_directories(sgp4 PUBLIC
+    ${SGP4_ROOT}
 )
 
 # Dear ImGui
@@ -83,7 +102,6 @@ target_include_directories(OrbitalX PRIVATE
     ${BGFX_ROOT}/include
     ${BX_ROOT}/include
     ${BIMG_ROOT}/include
-    ${SGP4_ROOT}/include
 )
 
 target_link_libraries(OrbitalX PRIVATE
