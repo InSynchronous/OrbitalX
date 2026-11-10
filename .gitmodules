@@ -10,3 +10,6 @@
 [submodule "submodules/imgui"]
 	path = submodules/imgui
 	url = https://github.com/ocornut/imgui.git
+[submodule "submodules/sgp4"]
+	path = submodules/sgp4
+	url = git@github.com:dnwrnr/sgp4.git

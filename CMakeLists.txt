@@ -15,6 +15,7 @@ find_package(glfw3 REQUIRED)
 set(BGFX_ROOT ${CMAKE_SOURCE_DIR}/submodules/bgfx)
 set(BX_ROOT   ${CMAKE_SOURCE_DIR}/submodules/bx)
 set(BIMG_ROOT ${CMAKE_SOURCE_DIR}/submodules/bimg)
+set(SGP4_ROOT ${CMAKE_SOURCE_DIR}/submodules/sgp4)
 
 if(APPLE)
     set(BGFX_BUILD ${BGFX_ROOT}/.build/osx-arm64/bin)
@@ -22,6 +23,7 @@ else()
     set(BGFX_BUILD ${BGFX_ROOT}/.build/linux64_gcc/bin)
 endif()
 
+# bgfx
 add_library(bgfx STATIC IMPORTED)
 set_target_properties(bgfx PROPERTIES
     IMPORTED_LOCATION "${BGFX_BUILD}/libbgfxRelease.a"
@@ -35,6 +37,12 @@ set_target_properties(bx PROPERTIES
 add_library(bimg STATIC IMPORTED)
 set_target_properties(bimg PROPERTIES
     IMPORTED_LOCATION "${BGFX_BUILD}/libbimgRelease.a"
+)
+
+# SGP4
+add_library(sgp4 STATIC IMPORTED)
+set_target_properties(sgp4 PROPERTIES
+    IMPORTED_LOCATION "${SGP4_ROOT}/build/libsgp4/libsgp4.a"
 )
 
 # Dear ImGui
@@ -75,12 +83,14 @@ target_include_directories(OrbitalX PRIVATE
     ${BGFX_ROOT}/include
     ${BX_ROOT}/include
     ${BIMG_ROOT}/include
+    ${SGP4_ROOT}/include
 )
 
 target_link_libraries(OrbitalX PRIVATE
     bgfx
     bx
     bimg
+    sgp4
     glfw
     imgui
 )
