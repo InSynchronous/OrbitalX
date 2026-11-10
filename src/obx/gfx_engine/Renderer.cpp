@@ -232,7 +232,7 @@ void obx::gfx_engine::Renderer::render() {
 
     bgfx::setViewRect(0, 0, 0, static_cast<uint16_t>(width), static_cast<uint16_t>(height));
 
-    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x1a1a1aff, 1.0f, 0);
+    bgfx::setViewClear(0, BGFX_CLEAR_COLOR | BGFX_CLEAR_DEPTH, 0x1a1a1aff, 0.0f, 0);
 
     float model[16];
     float view[16];
@@ -242,24 +242,34 @@ void obx::gfx_engine::Renderer::render() {
 
     float cameraTransform[16];
 
+    // camera relative
     bx::mtxSRT(cameraTransform, 1.0f, 1.0f, 1.0f, camera.rotation.x, camera.rotation.y,
-               camera.rotation.z, camera.position.x, camera.position.y, camera.position.z);
+               camera.rotation.z, 0.0f, 0.0f, 0.0f);
 
     bx::mtxInverse(view, cameraTransform);
 
     // 120 deg fov
     // 0.05f = 5 meter near clipping plane
-    bx::mtxProj(projection, camera.fov, static_cast<float>(width) / height, 0.05f, 500000.0f,
-                bgfx::getCaps()->homogeneousDepth);
+    const float nearPlane = 0.05f; // 50 meters (km units)
+    const float farPlane = 500000.0f;
 
+    const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
+
+    bx::mtxProj(projection, camera.fov, float(width) / height, farPlane, nearPlane,
+                homogeneousDepth);
     bgfx::setViewTransform(0, view, projection);
 
     for (auto &entity : entities) {
         auto &mesh = entity->mesh;
         auto &texture = entity->texture;
 
-        mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh->rotation.x, mesh->rotation.y, mesh->rotation.z,
-               mesh->position.x, mesh->position.y, mesh->position.z);
+        // camera relative positioning
+        const float x = mesh->position.x - camera.position.x;
+        const float y = mesh->position.y - camera.position.y;
+        const float z = mesh->position.z - camera.position.z;
+
+        mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh->rotation.x, mesh->rotation.y, mesh->rotation.z, x, y,
+               z);
 
         bgfx::setTransform(model);
         bgfx::setVertexBuffer(0, mesh->vertexBuffer);
@@ -267,7 +277,7 @@ void obx::gfx_engine::Renderer::render() {
         bgfx::setTexture(0, sampler, texture);
 
         bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
-                       BGFX_STATE_DEPTH_TEST_LESS);
+                       BGFX_STATE_DEPTH_TEST_GREATER);
 
         bgfx::submit(0, program);
     }
