@@ -13,7 +13,7 @@ class Satelite {
     libsgp4::Tle tle;
     libsgp4::SGP4 sgp4;
 
-    libsgp4::TimeSpan ToTimeSpan(float delta_ms);
+    libsgp4::TimeSpan ToTimeSpan(double delta_seconds);
 
   public:
     Satelite(libsgp4::Tle tle)
@@ -21,6 +21,7 @@ class Satelite {
 
     libsgp4::DateTime t;
 
+    bx::Vec3 getVelocity() const { return velocity; }
     bx::Vec3 getPosition() const { return position; }
 
     void step(float delta_time);

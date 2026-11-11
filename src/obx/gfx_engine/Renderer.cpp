@@ -240,14 +240,14 @@ void obx::gfx_engine::Renderer::render() {
 
     float time = static_cast<float>(glfwGetTime());
 
-    float cameraTransform[16];
-
-    // camera relative
-    bx::mtxSRT(cameraTransform, 1.0f, 1.0f, 1.0f, camera.rotation.x, camera.rotation.y,
-               camera.rotation.z, 0.0f, 0.0f, 0.0f);
-
-    bx::mtxInverse(view, cameraTransform);
-
+    if (camera.useLookDir) {
+        bx::mtxLookAt(view, bx::Vec3{0.0f, 0.0f, 0.0f}, camera.lookDir, camera.up);
+    } else {
+        float cameraTransform[16];
+        bx::mtxSRT(cameraTransform, 1.0f, 1.0f, 1.0f, camera.rotation.x, camera.rotation.y,
+                   camera.rotation.z, 0.0f, 0.0f, 0.0f);
+        bx::mtxInverse(view, cameraTransform);
+    }
     // 120 deg fov
     const float nearPlane = 0.01f; // 10 meters (km units)
     const float farPlane = 500000.0f;

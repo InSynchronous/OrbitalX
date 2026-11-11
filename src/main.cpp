@@ -10,7 +10,9 @@
 #include "obx/physics/NSateliteSim.h"
 #include "obx/physics/Satelite.h"
 #include "stb_image.h"
+#include <chrono>
 #include <cmath>
+#include <ctime>
 #include <iostream>
 #include <memory>
 #include <vector>
@@ -78,6 +80,7 @@ static float dragon_yaw = 0.0f;
 static libsgp4::DateTime timeNow;
 static libsgp4::DateTime simEpoch; // TLE epoch, never changes
 static double simSeconds = 0.0;    // seconds since simEpoch
+static bool warpToNowRequested = false;
 
 static obx::gfx_engine::Camera c = {
 
@@ -175,6 +178,9 @@ void imgui_handle() {
 
     ImGui::Text("Simulation");
     ImGui::TextUnformatted(timeNow.ToString().c_str());
+    if (ImGui::Button("Warp to Now (UTC)")) {
+        warpToNowRequested = true;
+    }
     ImGui::InputInt("Speed Multiplier", &speed_mul, 10);
     ImGui::InputDouble("Simulation Timestep (seconds)", &FIXED_DT, 0.1);
 
@@ -267,6 +273,37 @@ std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Re
     return entity;
 }
 
+// credit: wikipedia
+double julianDate(int year, int month, int day, int hour, int minute, double second) {
+    if (month <= 2) {
+        year--;
+        month += 12;
+    }
+
+    const int A = year / 100;
+    const int B = 2 - A + A / 4;
+
+    const double dayFraction = (hour + (minute + second / 60.0) / 60.0) / 24.0;
+
+    return std::floor(365.25 * (year + 4716)) + std::floor(30.6001 * (month + 1)) + day + B -
+           1524.5 + dayFraction;
+}
+
+// also credit wikipedia
+double calculateGMST(double jd) {
+    const double T = (jd - 2451545.0) / 36525.0;
+
+    double degrees = 280.46061837 + 360.98564736629 * (jd - 2451545.0) + 0.000387933 * T * T -
+                     (T * T * T) / 38710000.0;
+
+    degrees = std::fmod(degrees, 360.0);
+
+    if (degrees < 0.0)
+        degrees += 360.0;
+
+    return bx::toRad(static_cast<float>(degrees));
+}
+
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
@@ -326,6 +363,38 @@ int main() {
 
         frameTime = std::min(frameTime, 0.25);
 
+        if (warpToNowRequested) {
+            warpToNowRequested = false;
+
+            const auto now = std::chrono::system_clock::now();
+            const auto nowSeconds = std::chrono::floor<std::chrono::seconds>(now);
+            const std::chrono::year_month_day utcDate{
+                std::chrono::floor<std::chrono::days>(nowSeconds)};
+            const std::chrono::hh_mm_ss utcTime{nowSeconds -
+                                                std::chrono::floor<std::chrono::days>(nowSeconds)};
+
+            const double targetSimSeconds =
+                (julianDate(static_cast<int>(utcDate.year()),
+                            static_cast<unsigned>(utcDate.month()),
+                            static_cast<unsigned>(utcDate.day()),
+                            static_cast<int>(utcTime.hours().count()),
+                            static_cast<int>(utcTime.minutes().count()),
+                            static_cast<double>(utcTime.seconds().count())) -
+                 julianDate(simEpoch.Year(), simEpoch.Month(), simEpoch.Day(), simEpoch.Hour(),
+                            simEpoch.Minute(), simEpoch.Second())) *
+                86400.0;
+
+            if (targetSimSeconds > simSeconds && FIXED_DT > 0.0) {
+                while (simSeconds < targetSimSeconds) {
+                    const double dt = std::min(FIXED_DT, targetSimSeconds - simSeconds);
+                    planetSimulation.update(dt);
+                    sateliteSimulation.update(dt);
+                    simSeconds += dt;
+                }
+                accumulator = 0.0;
+            }
+        }
+
         // Complete the amount of time necessary for the time between last frame scaled to the
         // current timescale
         // eg. 60fps -> 0.0167 * time scale = amount of time to simulate -> divide by fixed_dt to
@@ -342,19 +411,24 @@ int main() {
 
         timeNow = simEpoch.AddSeconds(simSeconds);
 
-        // configure dragon
-        // Satelite::getPosition() is already in kilometers (SGP4 native units)
+        std::cout << "[" << timeNow.ToString() << "] ";
         std::cout << "X: " << dragon->getPosition().x << " Y: " << dragon->getPosition().y
                   << " Z: " << dragon->getPosition().z << std::endl;
 
-        const bx::Vec3 dragonKm = dragon->getPosition();
+        // offset by earth's position
+        const bx::Vec3 earthKm = bx::mul(earth->getPosition(), METERS_TO_KM);
+        const bx::Vec3 dragonKm = bx::add(earthKm, dragon->getPosition());
+        const float altKm = bx::length(bx::sub(dragonKm, earthKm)) - earthRadiusKm;
+        std::cout << "alt " << altKm << " | earth offset " << bx::length(earthKm) << " km\n";
 
         // follow dragon camera
-        if (selectedPosition == CameraPosition::FollowDragon) {
-            if (bx::length(dragonKm) > 1.0f) {
-                c.position = {dragonKm.x, dragonKm.y, dragonKm.z + followDistanceKm};
-                c.rotation = {0.0f, bx::toRad(180.0f), 0.0f};
-            }
+        c.useLookDir = (selectedPosition == CameraPosition::FollowDragon);
+
+        if (c.useLookDir) {
+            const bx::Vec3 radial = bx::normalize(bx::sub(dragonKm, earthKm));
+            c.position = bx::add(dragonKm, bx::mul(radial, followDistanceKm));
+            c.lookDir = bx::mul(radial, -1.0f);
+            c.up = {0.0f, 1.0f, 0.0f};
         }
 
         // set camera sync with imgui
@@ -370,7 +444,11 @@ int main() {
         float earthAngle = simTime * earthAngularSpeed;
         float moonAngle = simTime * moonAngularSpeed;
 
-        // Set earth 3d object to expected angle and simulated position
+        double jd = julianDate(timeNow.Year(), timeNow.Month(), timeNow.Day(), timeNow.Hour(),
+                               timeNow.Minute(), timeNow.Second());
+
+        earthAngle = calculateGMST(jd);
+
         earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
         earthEntity->mesh->setPosition(bx::mul(earth->getPosition(), METERS_TO_KM));
 

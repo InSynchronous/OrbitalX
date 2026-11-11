@@ -29,8 +29,11 @@ struct GLFWInfo {
 };
 
 struct Camera {
-    bx::Vec3 position;
-    bx::Vec3 rotation;
+    bx::Vec3 position{0.0f, 0.0f, 0.0f};
+    bx::Vec3 rotation{0.0f, 0.0f, 0.0f};
+    bx::Vec3 lookDir{0.0f, 0.0f, -1.0f};
+    bx::Vec3 up{0.0f, 1.0f, 0.0f};
+    bool useLookDir = false;
     float fov;
 };
 
