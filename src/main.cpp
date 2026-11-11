@@ -6,6 +6,7 @@
 #include "obx/gfx_engine/ObjMesh.h"
 #include "obx/gfx_engine/Renderer.h"
 #include "obx/gfx_engine/SphereMesh.h"
+#include "obx/gfx_engine/StaticCube.h"
 #include "obx/physics/CelestialBody.h"
 #include "obx/physics/NBodySim.h"
 #include "obx/physics/NSateliteSim.h"
@@ -68,7 +69,7 @@ static double moonz = 0;
 
 static float followDistanceKm = 0.05f; // 50 meters behind the dragon
 
-static float focalLengthMm = 10.0f;
+static float focalLengthMm = 50.0f;
 static float sensorHeightMm = 37.7f;
 
 static float roll = 0.0f;
@@ -86,8 +87,8 @@ static bool warpToNowRequested = false;
 
 static obx::gfx_engine::Camera c = {
 
-    {0.0f, 0.0f, orbitDistKm},                                    // position
-    {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)} // orientation
+    {0.0f, 0.0f, 0.0f},                                  // position
+    {bx::toRad(pitch), bx::toRad(-yaw), bx::toRad(roll)} // orientation
 };
 
 enum class CameraSensor { Custom, SonyFullFrame, SonyAPS_C, SonyMicroFourThirds, GOES16GLM };
@@ -104,10 +105,11 @@ enum class CameraPosition {
     PolarNorth,
     PolarSouth,
     Geostationary,
+    Debug,
 };
-static CameraPosition selectedPosition = CameraPosition::FollowDragon;
-static const char *positionNames[] = {"Custom",     "FollowDragon", "LowEarthOrbit",
-                                      "PolarNorth", "PolarSouth",   "Geostationary"};
+static CameraPosition selectedPosition = CameraPosition::Debug;
+static const char *positionNames[] = {"Custom",     "FollowDragon",  "LowEarthOrbit", "PolarNorth",
+                                      "PolarSouth", "Geostationary", "DEBUG"};
 
 void setCameraSensor(CameraSensor sensor) {
     selectedSensor = sensor;
@@ -139,17 +141,20 @@ void setCameraPosition(CameraPosition position) {
 
     switch (position) {
     case CameraPosition::Geostationary:
-        c.position = {0.0f, 0.0f, orbitDistKm};
+        orbitDistKm = earthRadiusKm + geoAltitudeKm;
+        c.position = {0.0f, 0.0f, -orbitDistKm};
         roll = pitch = yaw = 0.0f;
         break;
 
     case CameraPosition::LowEarthOrbit:
         orbitDistKm = earthRadiusKm + issAltitudeKm;
-        c.position = {0.0f, 0.0f, orbitDistKm};
+        c.position = {0.0f, 0.0f, -orbitDistKm};
         roll = pitch = yaw = 0.0f;
         break;
 
     case CameraPosition::PolarNorth:
+        orbitDistKm = earthRadiusKm + geoAltitudeKm;
+
         c.position = {0.0f, orbitDistKm, 0.0f};
 
         pitch = -90.0f;
@@ -158,11 +163,18 @@ void setCameraPosition(CameraPosition position) {
         break;
 
     case CameraPosition::PolarSouth:
+        orbitDistKm = earthRadiusKm + geoAltitudeKm;
+
         c.position = {0.0f, -orbitDistKm, 0.0f};
 
         pitch = 90.0f;
         yaw = 0.0f;
         roll = 0.0f;
+        break;
+
+    case CameraPosition::Debug:
+        c.position = {0.0f, 0.0f, -30.0f};
+        roll = pitch = yaw = 0.0f;
         break;
 
     case CameraPosition::FollowDragon:
@@ -172,7 +184,7 @@ void setCameraPosition(CameraPosition position) {
         return;
     }
 
-    c.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
+    c.rotation = {bx::toRad(pitch), bx::toRad(-yaw), bx::toRad(roll)};
 }
 
 void imgui_handle() {
@@ -225,7 +237,7 @@ void imgui_handle() {
     ImGui::EndDisabled();
 
     if (orientationChanged) {
-        c.rotation = {bx::toRad(-pitch), bx::toRad(180.0f - yaw), bx::toRad(roll)};
+        c.rotation = {bx::toRad(pitch), bx::toRad(-yaw), bx::toRad(roll)};
     }
 
     ImGui::BeginDisabled(selectedPosition != CameraPosition::FollowDragon);
@@ -332,6 +344,12 @@ int main() {
     auto fallback = generate_checkerboard(512, 256);
     dragonEntity->loadTexture(fallback.data(), 512, 256);
 
+    // LoS box
+    auto losBoxMesh = std::make_unique<obx::gfx_engine::StaticCube>(
+        bx::Vec3{0.0f, 2.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 1.0f);
+    auto losBoxEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(losBoxMesh));
+    renderer.addEntity(losBoxEntity);
+
     // Create simulation objects
     auto earth =
         std::make_shared<obx::physics::CelestialBody>(5.9722e24, bx::Vec3{0.0f, 0.0f, 0.0f});
@@ -340,8 +358,8 @@ int main() {
         bx::Vec3{0, 0, -1018.0f});
 
     libsgp4::Tle tle("A0882",
-                     "1 A0882U 26226A   26314.17503267  .00009346  00000-0  17575-3 0  9993",
-                     "2 A0882  51.6322 297.6644 0007292   8.9462 351.1656 15.49289712  6377");
+                     "1 A0882U 26226A   26314.88456348  .00009976  00000-0  18692-3 0  9998",
+                     "2 A0882  51.6322 294.1523 0007308  11.5147 348.6007 15.49305067  6488");
     auto dragon = std::make_shared<obx::physics::Satelite>(tle);
 
     simEpoch = tle.Epoch();
@@ -358,6 +376,8 @@ int main() {
     sateliteSimulation.addSatelite(dragon);
 
     // Main Loop
+    setCameraPosition(selectedPosition);
+    setCameraSensor(selectedSensor);
     while (!renderer.windowShouldClose()) {
         double currentTime = glfwGetTime();
         double frameTime = currentTime - previousTime;
@@ -465,7 +485,7 @@ int main() {
 
         dragonEntity->mesh->setPosition(dragonKm);
         dragonEntity->mesh->setRotation(
-            {bx::toRad(-dragon_pitch), bx::toRad(180.0f - dragon_yaw), bx::toRad(dragon_roll)});
+            {bx::toRad(dragon_pitch), bx::toRad(-dragon_yaw), bx::toRad(dragon_roll)});
 
         // for imgui
         moonx = moon->getPosition().x;
