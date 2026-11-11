@@ -1,6 +1,7 @@
 #include "bx/math.h"
 #include "imgui.h"
 #include "libsgp4/DateTime.h"
+#include "obx/Color.h"
 #include "obx/gfx_engine/Entity.h"
 #include "obx/gfx_engine/ObjMesh.h"
 #include "obx/gfx_engine/Renderer.h"
@@ -9,6 +10,7 @@
 #include "obx/physics/NBodySim.h"
 #include "obx/physics/NSateliteSim.h"
 #include "obx/physics/Satelite.h"
+
 #include "stb_image.h"
 #include <chrono>
 #include <cmath>
@@ -64,9 +66,9 @@ static double FIXED_DT = 1;  // 1 second
 static double moonx = 0;
 static double moonz = 0;
 
-static float followDistanceKm = 0.1f; // 100 meters behind the dragon
+static float followDistanceKm = 0.05f; // 50 meters behind the dragon
 
-static float focalLengthMm = 134.0f;
+static float focalLengthMm = 10.0f;
 static float sensorHeightMm = 37.7f;
 
 static float roll = 0.0f;
@@ -411,15 +413,21 @@ int main() {
 
         timeNow = simEpoch.AddSeconds(simSeconds);
 
-        std::cout << "[" << timeNow.ToString() << "] ";
-        std::cout << "X: " << dragon->getPosition().x << " Y: " << dragon->getPosition().y
-                  << " Z: " << dragon->getPosition().z << std::endl;
+        const bx::Vec3 p = dragon->getPosition();
 
+        std::cout << obx::Color::Bold << obx::Color::Cyan << "[" << timeNow.ToString() << "]"
+                  << obx::Color::Reset << " " << obx::Color::Bold << obx::Color::Magenta
+                  << "(DRAGON)" << obx::Color::Reset << " " << obx::Color::Gray << "│ "
+                  << obx::Color::Reset << obx::Color::Bold << obx::Color::Yellow << "X "
+                  << obx::Color::Reset << std::fixed << std::setprecision(3)
+                  << dragon->getPosition().x << "  " << obx::Color::Bold << obx::Color::Green
+                  << "Y " << obx::Color::Reset << dragon->getPosition().y << "  "
+                  << obx::Color::Bold << obx::Color::Blue << "Z " << obx::Color::Reset
+                  << dragon->getPosition().z << '\n';
         // offset by earth's position
         const bx::Vec3 earthKm = bx::mul(earth->getPosition(), METERS_TO_KM);
         const bx::Vec3 dragonKm = bx::add(earthKm, dragon->getPosition());
         const float altKm = bx::length(bx::sub(dragonKm, earthKm)) - earthRadiusKm;
-        std::cout << "alt " << altKm << " | earth offset " << bx::length(earthKm) << " km\n";
 
         // follow dragon camera
         c.useLookDir = (selectedPosition == CameraPosition::FollowDragon);
