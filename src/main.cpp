@@ -6,7 +6,6 @@
 #include "obx/gfx_engine/ObjMesh.h"
 #include "obx/gfx_engine/Renderer.h"
 #include "obx/gfx_engine/SphereMesh.h"
-#include "obx/gfx_engine/StaticCube.h"
 #include "obx/physics/CelestialBody.h"
 #include "obx/physics/NBodySim.h"
 #include "obx/physics/NSateliteSim.h"
@@ -107,7 +106,7 @@ enum class CameraPosition {
     Geostationary,
     Debug,
 };
-static CameraPosition selectedPosition = CameraPosition::Debug;
+static CameraPosition selectedPosition = CameraPosition::Geostationary;
 static const char *positionNames[] = {"Custom",     "FollowDragon",  "LowEarthOrbit", "PolarNorth",
                                       "PolarSouth", "Geostationary", "DEBUG"};
 
@@ -318,6 +317,22 @@ double calculateGMST(double jd) {
     return bx::toRad(static_cast<float>(degrees));
 }
 
+bx::Vec3 latLongToSphere(double latitude, double longitude, float radius) {
+    double lat = bx::toRad(latitude);
+    double lon = bx::toRad(longitude);
+
+    return bx::Vec3{static_cast<float>(radius * std::cos(lat) * std::cos(lon)),
+                    static_cast<float>(radius * std::sin(lat)),
+                    static_cast<float>(radius * std::cos(lat) * std::sin(lon))};
+}
+
+bx::Vec3 rotatePointEarth(bx::Vec3 point, float earthRotation) {
+    float mtx[16];
+    bx::mtxRotateY(mtx, earthRotation);
+
+    return bx::mul(point, mtx);
+}
+
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
@@ -345,8 +360,8 @@ int main() {
     dragonEntity->loadTexture(fallback.data(), 512, 256);
 
     // LoS box
-    auto losBoxMesh = std::make_unique<obx::gfx_engine::StaticCube>(
-        bx::Vec3{0.0f, 2.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 1.0f);
+    auto losBoxMesh = std::make_unique<obx::gfx_engine::SphereMesh>(
+        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 32, 100.0f);
     auto losBoxEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(losBoxMesh));
     renderer.addEntity(losBoxEntity);
 
@@ -477,8 +492,16 @@ int main() {
 
         earthAngle = calculateGMST(jd);
 
+        auto san_francisco =
+            rotatePointEarth(latLongToSphere(37.7749, -122.4194, earthRadiusKm), earthAngle);
+
+        losBoxEntity->mesh->setPosition(san_francisco);
+
         earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
-        earthEntity->mesh->setPosition(bx::mul(earth->getPosition(), METERS_TO_KM));
+
+        // I lwk do not care about the moon's gravitational pull on the earth it is too annoying to
+        // move the camera and everything to be
+        // earthEntity->mesh->setPosition(bx::mul(earth->getPosition(), METERS_TO_KM));
 
         moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
         moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
