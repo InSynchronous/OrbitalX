@@ -54,3 +54,18 @@ void obx::gfx_engine::ConeMesh::upload() {
     indexBuffer = bgfx::createIndexBuffer(
         bgfx::copy(indices.data(), static_cast<uint32_t>(indices.size() * sizeof(uint16_t))));
 }
+
+void obx::gfx_engine::ConeMesh::rebuild(float newHeight, float newBaseRadius,
+                                        const bx::Vec3 &newApex, const bx::Vec3 &newAxis) {
+    height = newHeight;
+    baseRadius = newBaseRadius;
+    apex = newApex;
+    axis = bx::normalize(newAxis);
+
+    if (bgfx::isValid(vertexBuffer))
+        bgfx::destroy(vertexBuffer);
+    if (bgfx::isValid(indexBuffer))
+        bgfx::destroy(indexBuffer);
+
+    upload();
+}

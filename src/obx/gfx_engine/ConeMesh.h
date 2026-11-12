@@ -11,6 +11,7 @@ class ConeMesh : public Mesh {
              int segments, const bx::Vec3 &apex, const bx::Vec3 &axis);
 
     void upload() override;
+    void rebuild(float height, float baseRadius, const bx::Vec3 &apex, const bx::Vec3 &axis);
 
   private:
     float height;

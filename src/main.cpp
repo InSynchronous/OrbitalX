@@ -10,6 +10,7 @@
 #include "obx/physics/CelestialBody.h"
 #include "obx/physics/NBodySim.h"
 #include "obx/physics/NSateliteSim.h"
+#include "obx/physics/Passpredict.h"
 #include "obx/physics/Satelite.h"
 
 #include "stb_image.h"
@@ -84,6 +85,10 @@ static libsgp4::DateTime timeNow;
 static libsgp4::DateTime simEpoch; // TLE epoch, never changes
 static double simSeconds = 0.0;    // seconds since simEpoch
 static bool warpToNowRequested = false;
+static bool warpToPassOverRequested = false;
+
+static float latitude = 37.7749, longitude = -122.4194;
+std::list<obx::physics::PassDetails> passList;
 
 static obx::gfx_engine::Camera c = {
 
@@ -261,6 +266,18 @@ void imgui_handle() {
     ImGui::InputFloat("Pitch", &dragon_pitch, 0.1f, 1.0f, "%.2f");
     ImGui::InputFloat("Yaw", &dragon_yaw, 0.1f, 1.0f, "%.2f");
     ImGui::End();
+
+    // Passpredict container:
+    ImGui::Begin("Predict Passes");
+    ImGui::Text("Position");
+    ImGui::InputFloat("Latitude", &latitude, 0.1f, 1.0f, "%.5f");
+    ImGui::InputFloat("Longitude", &longitude, 0.1f, 1.0f, "%.5f");
+
+    if (ImGui::Button("Warp to next predicted passover (UTC)")) {
+        warpToPassOverRequested = true;
+    }
+
+    ImGui::End();
 }
 
 std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Renderer &renderer,
@@ -366,13 +383,15 @@ int main() {
     auto fallback = generate_checkerboard(512, 256);
     dragonEntity->loadTexture(fallback.data(), 512, 256);
 
-    const bx::Vec3 stationLocal = latLongToSphere(37.7749, -122.4194, earthRadiusKm);
-    const float minElevRad = bx::toRad(10.0f);
-    const float slantKm = slantRangeKm(earthRadiusKm, issAltitudeKm, minElevRad);
+    bx::Vec3 stationLocal = latLongToSphere(latitude, longitude, earthRadiusKm);
+    float minElevRad = bx::toRad(10.0f);
+    float slantKm = slantRangeKm(earthRadiusKm, issAltitudeKm, minElevRad);
 
     auto losConeMesh = std::make_unique<obx::gfx_engine::ConeMesh>(
         bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, slantKm * std::sin(minElevRad),
         slantKm * std::cos(minElevRad), 48, stationLocal, bx::normalize(stationLocal));
+
+    obx::gfx_engine::ConeMesh *losCone = losConeMesh.get();
 
     auto losConeEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(losConeMesh));
     auto coneTex = generate_checkerboard(512, 256);
@@ -407,6 +426,47 @@ int main() {
     // Main Loop
     setCameraPosition(selectedPosition);
     setCameraSensor(selectedSensor);
+
+    auto warpTo = [&](const libsgp4::DateTime &t) {
+        const double target =
+            (julianDate(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()) -
+             julianDate(simEpoch.Year(), simEpoch.Month(), simEpoch.Day(), simEpoch.Hour(),
+                        simEpoch.Minute(), simEpoch.Second())) *
+            86400.0;
+
+        if (target <= simSeconds || FIXED_DT <= 0.0)
+            return;
+
+        while (simSeconds < target) {
+            const double dt = std::min(FIXED_DT, target - simSeconds);
+            planetSimulation.update(dt);
+            sateliteSimulation.update(dt);
+            simSeconds += dt;
+        }
+        accumulator = 0.0;
+    };
+
+    auto regeneratePasses = [&]() {
+        auto sgp = dragon->getSGP4();
+        passList = obx::physics::GeneratePassList(libsgp4::CoordGeodetic{latitude, longitude, 0.05},
+                                                  sgp, timeNow, timeNow.AddDays(7), 60);
+    };
+
+    auto nextAos = [&](libsgp4::DateTime &out) {
+        for (const auto &p : passList) {
+            if (p.aos > timeNow) {
+                out = p.aos;
+                return true;
+            }
+        }
+        return false;
+    };
+
+    regeneratePasses();
+
+    float lastLat = latitude;
+    float lastLon = longitude;
+
     while (!renderer.windowShouldClose()) {
         double currentTime = glfwGetTime();
         double frameTime = currentTime - previousTime;
@@ -443,6 +503,23 @@ int main() {
                     simSeconds += dt;
                 }
                 accumulator = 0.0;
+            }
+        }
+
+        if (warpToPassOverRequested) {
+            warpToPassOverRequested = false;
+
+            libsgp4::DateTime aos;
+
+            // the list may be stale or empty, so regenerate it from the current time if needed
+            if (!nextAos(aos)) {
+                regeneratePasses();
+            }
+
+            if (nextAos(aos)) {
+                warpTo(aos);
+            } else {
+                std::cout << "No passes in the next 7 days" << std::endl;
             }
         }
 
@@ -505,6 +582,23 @@ int main() {
                                timeNow.Minute(), timeNow.Second());
 
         earthAngle = calculateGMST(jd);
+
+        if (latitude != lastLat || longitude != lastLon) {
+            latitude = std::clamp(latitude, -90.0f, 90.0f);
+            longitude = std::clamp(longitude, -180.0f, 180.0f);
+
+            stationLocal = latLongToSphere(latitude, longitude, earthRadiusKm);
+            losCone->rebuild(slantKm * std::sin(minElevRad), slantKm * std::cos(minElevRad),
+                             stationLocal, bx::normalize(stationLocal));
+
+            lastLat = latitude;
+            lastLon = longitude;
+
+            // regenerate pass list for dragon
+            regeneratePasses();
+
+            std::cout << "GENERATED PASS LIST OF LENGTH: " << passList.size() << std::endl;
+        }
 
         losConeEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
 
