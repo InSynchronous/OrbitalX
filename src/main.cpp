@@ -2,6 +2,7 @@
 #include "imgui.h"
 #include "libsgp4/DateTime.h"
 #include "obx/Color.h"
+#include "obx/gfx_engine/ConeMesh.h"
 #include "obx/gfx_engine/Entity.h"
 #include "obx/gfx_engine/ObjMesh.h"
 #include "obx/gfx_engine/Renderer.h"
@@ -333,6 +334,12 @@ bx::Vec3 rotatePointEarth(bx::Vec3 point, float earthRotation) {
     return bx::mul(point, mtx);
 }
 
+// distance from a ground station to a satellite at altitude h seen at elevation eps
+float slantRangeKm(float R, float h, float eps) {
+    const float r = R + h;
+    return std::sqrt(r * r - R * R * std::cos(eps) * std::cos(eps)) - R * std::sin(eps);
+}
+
 int main() {
     std::cout << "Build system working?! " << std::endl;
 
@@ -359,11 +366,18 @@ int main() {
     auto fallback = generate_checkerboard(512, 256);
     dragonEntity->loadTexture(fallback.data(), 512, 256);
 
-    // LoS box
-    auto losBoxMesh = std::make_unique<obx::gfx_engine::SphereMesh>(
-        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 32, 100.0f);
-    auto losBoxEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(losBoxMesh));
-    renderer.addEntity(losBoxEntity);
+    const bx::Vec3 stationLocal = latLongToSphere(37.7749, -122.4194, earthRadiusKm);
+    const float minElevRad = bx::toRad(10.0f);
+    const float slantKm = slantRangeKm(earthRadiusKm, issAltitudeKm, minElevRad);
+
+    auto losConeMesh = std::make_unique<obx::gfx_engine::ConeMesh>(
+        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, slantKm * std::sin(minElevRad),
+        slantKm * std::cos(minElevRad), 48, stationLocal, bx::normalize(stationLocal));
+
+    auto losConeEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(losConeMesh));
+    auto coneTex = generate_checkerboard(512, 256);
+    losConeEntity->loadTexture(coneTex.data(), 512, 256);
+    renderer.addEntity(losConeEntity);
 
     // Create simulation objects
     auto earth =
@@ -492,10 +506,7 @@ int main() {
 
         earthAngle = calculateGMST(jd);
 
-        auto san_francisco =
-            rotatePointEarth(latLongToSphere(37.7749, -122.4194, earthRadiusKm), earthAngle);
-
-        losBoxEntity->mesh->setPosition(san_francisco);
+        losConeEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
 
         earthEntity->mesh->setRotation({0.0f, earthAngle, 0.0f});
 
