@@ -12,6 +12,7 @@ class Mesh {
 
     bx::Vec3 position;
     bx::Vec3 rotation;
+    bx::Vec3 scale = {1.0f, 1.0f, 1.0f};
 
     friend class Renderer;
 
@@ -24,6 +25,8 @@ class Mesh {
     }
     void setPosition(bx::Vec3 p) { position = p; }
     void setRotation(bx::Vec3 r) { rotation = r; }
+
+    void setScale(bx::Vec3 v) { scale = v; }
 
     virtual void upload() = 0;
 };

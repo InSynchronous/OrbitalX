@@ -267,8 +267,8 @@ void obx::gfx_engine::Renderer::render() {
         const float y = mesh->position.y - camera.position.y;
         const float z = mesh->position.z - camera.position.z;
 
-        mtxSRT(model, 1.0f, 1.0f, 1.0f, mesh->rotation.x, mesh->rotation.y, mesh->rotation.z, x, y,
-               z);
+        mtxSRT(model, mesh->scale.x, mesh->scale.y, mesh->scale.z, mesh->rotation.x,
+               mesh->rotation.y, mesh->rotation.z, x, y, z);
 
         bgfx::setTransform(model);
         bgfx::setVertexBuffer(0, mesh->vertexBuffer);

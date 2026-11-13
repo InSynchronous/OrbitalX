@@ -383,6 +383,14 @@ int main() {
     auto fallback = generate_checkerboard(512, 256);
     dragonEntity->loadTexture(fallback.data(), 512, 256);
 
+    auto trackingMarkerMesh = std::make_unique<obx::gfx_engine::SphereMesh>(
+        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 16, 1.0f);
+    auto trackingMarkerEntity =
+        std::make_shared<obx::gfx_engine::Entity>(std::move(trackingMarkerMesh));
+    const std::vector<uint8_t> markerTexture = {0, 255, 0, 255};
+    trackingMarkerEntity->loadTexture(markerTexture.data(), 1, 1);
+    renderer.addEntity(trackingMarkerEntity);
+
     bx::Vec3 stationLocal = latLongToSphere(latitude, longitude, earthRadiusKm);
     float minElevRad = bx::toRad(10.0f);
     float slantKm = slantRangeKm(earthRadiusKm, issAltitudeKm, minElevRad);
@@ -406,8 +414,8 @@ int main() {
         bx::Vec3{0, 0, -1018.0f});
 
     libsgp4::Tle tle("A0882",
-                     "1 A0882U 26226A   26314.88456348  .00009976  00000-0  18692-3 0  9998",
-                     "2 A0882  51.6322 294.1523 0007308  11.5147 348.6007 15.49305067  6488");
+                     "1 A0882U 26226A   26316.17460339  .00008107  00000-0  15334-3 0  9992",
+                     "2 A0882  51.6324 287.7668 0007312  16.4277 343.6947 15.49327857  6682");
     auto dragon = std::make_shared<obx::physics::Satelite>(tle);
 
     simEpoch = tle.Epoch();
@@ -550,6 +558,7 @@ int main() {
                   << "Y " << obx::Color::Reset << dragon->getPosition().y << "  "
                   << obx::Color::Bold << obx::Color::Blue << "Z " << obx::Color::Reset
                   << dragon->getPosition().z << '\n';
+
         // offset by earth's position
         const bx::Vec3 earthKm = bx::mul(earth->getPosition(), METERS_TO_KM);
         const bx::Vec3 dragonKm = bx::add(earthKm, dragon->getPosition());
@@ -614,6 +623,22 @@ int main() {
         dragonEntity->mesh->setPosition(dragonKm);
         dragonEntity->mesh->setRotation(
             {bx::toRad(dragon_pitch), bx::toRad(-dragon_yaw), bx::toRad(dragon_roll)});
+
+        float cameraDistance = bx::length(bx::sub(c.position, dragonKm));
+        int viewportWidth = 1280;
+        int viewportHeight = 720;
+        if (1) {
+            // if (cameraDistance > 100.0f && viewportHeight > 0) {
+
+            float markerRadiusPixels = 3.0f;
+            float markerRadius = 2.0f * cameraDistance *
+                                 std::tan(bx::toRad(renderer.camera.fov) * 0.5f) *
+                                 markerRadiusPixels / static_cast<float>(viewportHeight);
+            trackingMarkerEntity->mesh->setPosition(dragonKm);
+            trackingMarkerEntity->mesh->setScale({markerRadius, markerRadius, markerRadius});
+        } else {
+            trackingMarkerEntity->mesh->setScale({0.0f, 0.0f, 0.0f});
+        }
 
         // for imgui
         moonx = moon->getPosition().x;
