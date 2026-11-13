@@ -95,7 +95,6 @@ target_compile_definitions(OrbitalX PRIVATE
 
 target_compile_options(OrbitalX PRIVATE
     -O3
-	-g
     -march=native
 )
 

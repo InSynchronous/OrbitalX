@@ -5,6 +5,7 @@
 #include "obx/gfx_engine/ConeMesh.h"
 #include "obx/gfx_engine/Entity.h"
 #include "obx/gfx_engine/ObjMesh.h"
+#include "obx/gfx_engine/OrbitLineMesh.h"
 #include "obx/gfx_engine/Renderer.h"
 #include "obx/gfx_engine/SphereMesh.h"
 #include "obx/physics/CelestialBody.h"
@@ -89,6 +90,7 @@ static bool warpToPassOverRequested = false;
 
 static float latitude = 37.7749, longitude = -122.4194;
 std::list<obx::physics::PassDetails> passList;
+std::vector<bx::Vec3> orbitPoints;
 
 static obx::gfx_engine::Camera c = {
 
@@ -383,6 +385,7 @@ int main() {
     auto fallback = generate_checkerboard(512, 256);
     dragonEntity->loadTexture(fallback.data(), 512, 256);
 
+    // marker sphere
     auto trackingMarkerMesh = std::make_unique<obx::gfx_engine::SphereMesh>(
         bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 16, 1.0f);
     auto trackingMarkerEntity =
@@ -431,10 +434,6 @@ int main() {
     obx::physics::NSateliteSim sateliteSimulation;
     sateliteSimulation.addSatelite(dragon);
 
-    // Main Loop
-    setCameraPosition(selectedPosition);
-    setCameraSensor(selectedSensor);
-
     auto warpTo = [&](const libsgp4::DateTime &t) {
         const double target =
             (julianDate(t.Year(), t.Month(), t.Day(), t.Hour(), t.Minute(), t.Second()) -
@@ -470,10 +469,51 @@ int main() {
         return false;
     };
 
+    // orbit mesh
+    auto regenerateOrbitalTrajectory = [&]() {
+        orbitPoints.clear();
+        auto sgp = dragon->getSGP4();
+
+        const double meanMotionRevsPerDay = dragon->getTle().MeanMotion();
+        const double orbitPeriodSeconds = 86400.0 / meanMotionRevsPerDay;
+
+        const int samples = 180;
+        orbitPoints.reserve(samples + 1);
+
+        for (int i = 0; i <= samples; ++i) {
+            double t = orbitPeriodSeconds * double(i) / double(samples);
+
+            libsgp4::DateTime sampleTime = timeNow.AddSeconds(t);
+            libsgp4::Eci eci = sgp.FindPosition(sampleTime);
+            libsgp4::Vector pos = eci.Position();
+
+            orbitPoints.push_back(
+                {static_cast<float>(pos.x), static_cast<float>(pos.z), static_cast<float>(pos.y)});
+        }
+
+        orbitPoints.back() = orbitPoints.front();
+    };
+
+    regenerateOrbitalTrajectory();
+
+    auto orbitMesh = std::make_unique<obx::gfx_engine::OrbitLineMesh>(
+        bx::Vec3{0, 0, 0}, bx::Vec3{0, 0, 0}, orbitPoints);
+    // needed to access .rebuild
+    // @todo aquire a better solution than this
+    obx::gfx_engine::OrbitLineMesh *orbitMeshPtr = orbitMesh.get();
+
+    auto orbitEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(orbitMesh));
+
+    renderer.addEntity(orbitEntity);
+
     regeneratePasses();
 
     float lastLat = latitude;
     float lastLon = longitude;
+
+    // Main Loop
+    setCameraPosition(selectedPosition);
+    setCameraSensor(selectedSensor);
 
     while (!renderer.windowShouldClose()) {
         double currentTime = glfwGetTime();
@@ -560,15 +600,14 @@ int main() {
                   << dragon->getPosition().z << '\n';
 
         // offset by earth's position
-        const bx::Vec3 earthKm = bx::mul(earth->getPosition(), METERS_TO_KM);
-        const bx::Vec3 dragonKm = bx::add(earthKm, dragon->getPosition());
-        const float altKm = bx::length(bx::sub(dragonKm, earthKm)) - earthRadiusKm;
+        const bx::Vec3 dragonKm = dragon->getPosition();
+        const float altKm = bx::length(dragonKm) - earthRadiusKm;
 
         // follow dragon camera
         c.useLookDir = (selectedPosition == CameraPosition::FollowDragon);
 
         if (c.useLookDir) {
-            const bx::Vec3 radial = bx::normalize(bx::sub(dragonKm, earthKm));
+            const bx::Vec3 radial = bx::normalize(dragonKm);
             c.position = bx::add(dragonKm, bx::mul(radial, followDistanceKm));
             c.lookDir = bx::mul(radial, -1.0f);
             c.up = {0.0f, 1.0f, 0.0f};
@@ -643,6 +682,11 @@ int main() {
         // for imgui
         moonx = moon->getPosition().x;
         moonz = moon->getPosition().z;
+
+        // regenerate
+        regenerateOrbitalTrajectory();
+        static_cast<obx::gfx_engine::OrbitLineMesh *>(orbitEntity->mesh.get())
+            ->rebuild(bx::Vec3{0, 0, 0}, bx::Vec3{0, 0, 0}, orbitPoints);
 
         renderer.render();
     }

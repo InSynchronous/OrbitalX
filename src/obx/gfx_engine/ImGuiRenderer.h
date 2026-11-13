@@ -8,6 +8,8 @@ class ImGuiRenderer {
     bgfx::ProgramHandle program = BGFX_INVALID_HANDLE;
     bgfx::UniformHandle sampler = BGFX_INVALID_HANDLE;
     bgfx::VertexLayout layout;
+
+    // hopefully will NEVER collide with anything important
     bgfx::ViewId viewId = 255;
 
   public:

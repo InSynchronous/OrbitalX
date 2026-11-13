@@ -44,4 +44,22 @@ $SHADERC \
     -i $BGFX/src \
     --varyingdef shaders/varying_imgui.def.sc
 
+$SHADERC \
+    -f shaders/vs_line.sc \
+    -o assets/shaders/metal/vs_line.bin \
+    --type vertex \
+    --platform osx \
+    -p metal \
+    -i $BGFX/src \
+    --varyingdef shaders/varying_line.def.sc
+
+$SHADERC \
+    -f shaders/fs_line.sc \
+    -o assets/shaders/metal/fs_line.bin \
+    --type fragment \
+    --platform osx \
+    -p metal \
+    -i $BGFX/src \
+    --varyingdef shaders/varying_line.def.sc
+
 cmake --build build

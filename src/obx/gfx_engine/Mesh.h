@@ -4,6 +4,8 @@
 #include <bgfx/bgfx.h>
 namespace obx::gfx_engine {
 
+enum class MeshType { TRIANGLE_MESH, LINE_MESH };
+
 class Mesh {
   protected:
     bgfx::IndexBufferHandle indexBuffer;
@@ -13,6 +15,8 @@ class Mesh {
     bx::Vec3 position;
     bx::Vec3 rotation;
     bx::Vec3 scale = {1.0f, 1.0f, 1.0f};
+
+    MeshType meshType = MeshType::TRIANGLE_MESH;
 
     friend class Renderer;
 

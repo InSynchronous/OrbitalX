@@ -44,4 +44,22 @@ $SHADERC \
     -i $BGFX/src \
     --varyingdef shaders/varying_imgui.def.sc
 
+$SHADERC \
+    -f shaders/vs_line.sc \
+    -o assets/shaders/spirv/vs_line.bin \
+    --type vertex \
+    --platform linux \
+    -p spirv \
+    -i $BGFX/src \
+    --varyingdef shaders/varying_line.def.sc
+
+$SHADERC \
+    -f shaders/fs_line.sc \
+    -o assets/shaders/spirv/fs_line.bin \
+    --type fragment \
+    --platform linux \
+    -p spirv \
+    -i $BGFX/src \
+    --varyingdef shaders/varying_line.def.sc
+
 cmake --build build

@@ -104,10 +104,10 @@ void obx::gfx_engine::Renderer::buildPrograms(std::string shaderDirectory) {
     std::string vertexPath = std::string(shaderDirectory) + "vs_cube.bin";
     std::string fragmentPath = std::string(shaderDirectory) + "fs_cube.bin";
 
-    bgfx::ShaderHandle vertexShader = loadShader(vertexPath.c_str());
-    bgfx::ShaderHandle fragmentShader = loadShader(fragmentPath.c_str());
+    bgfx::ShaderHandle triangleMeshVertexShader = loadShader(vertexPath.c_str());
+    bgfx::ShaderHandle triangleMeshFragmentShader = loadShader(fragmentPath.c_str());
 
-    if (!bgfx::isValid(vertexShader) || !bgfx::isValid(fragmentShader)) {
+    if (!bgfx::isValid(triangleMeshVertexShader) || !bgfx::isValid(triangleMeshFragmentShader)) {
         std::cerr << "Shader loading failed\n";
         bgfx::shutdown();
         glfwDestroyWindow(info.window);
@@ -115,7 +115,25 @@ void obx::gfx_engine::Renderer::buildPrograms(std::string shaderDirectory) {
         std::exit(-1);
     }
 
-    program = bgfx::createProgram(vertexShader, fragmentShader, true);
+    triangleMeshProgram =
+        bgfx::createProgram(triangleMeshVertexShader, triangleMeshFragmentShader, true);
+
+    // other shader
+    vertexPath = std::string(shaderDirectory) + "vs_line.bin";
+    fragmentPath = std::string(shaderDirectory) + "fs_line.bin";
+
+    bgfx::ShaderHandle lineMeshVertexShader = loadShader(vertexPath.c_str());
+    bgfx::ShaderHandle lineMeshFragmentShader = loadShader(fragmentPath.c_str());
+
+    if (!bgfx::isValid(lineMeshVertexShader) || !bgfx::isValid(lineMeshFragmentShader)) {
+        std::cerr << "Shader loading failed\n";
+        bgfx::shutdown();
+        glfwDestroyWindow(info.window);
+        glfwTerminate();
+        std::exit(-1);
+    }
+
+    lineMeshProgram = bgfx::createProgram(lineMeshVertexShader, lineMeshFragmentShader, true);
 }
 
 void obx::gfx_engine::Renderer::setupImGui() {
@@ -272,13 +290,23 @@ void obx::gfx_engine::Renderer::render() {
 
         bgfx::setTransform(model);
         bgfx::setVertexBuffer(0, mesh->vertexBuffer);
-        bgfx::setIndexBuffer(mesh->indexBuffer);
-        bgfx::setTexture(0, sampler, texture);
+        if (mesh->meshType == MeshType::TRIANGLE_MESH) {
+            bgfx::setIndexBuffer(mesh->indexBuffer);
+            bgfx::setTexture(0, sampler, texture);
 
-        bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
-                       BGFX_STATE_DEPTH_TEST_GREATER);
+            bgfx::setState(BGFX_STATE_WRITE_RGB | BGFX_STATE_WRITE_A | BGFX_STATE_WRITE_Z |
+                           BGFX_STATE_DEPTH_TEST_GREATER);
+            bgfx::submit(0, triangleMeshProgram);
+        } else if (mesh->meshType == MeshType::LINE_MESH) {
+            // no textures, no index buffer; the line mesh is kinda dookie
+            // @todo add a better way to change colors or something
+            bgfx::setState(BGFX_STATE_PT_LINESTRIP | BGFX_STATE_DEPTH_TEST_GREATER |
+                           BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA);
 
-        bgfx::submit(0, program);
+            // i think you keep it the same id to ensure the depth buffer is the same but don't
+            // quote me on that (imgui is 255 btw)
+            bgfx::submit(0, lineMeshProgram);
+        }
     }
 
     this->renderUI();

@@ -25,6 +25,7 @@ class Satelite {
     bx::Vec3 getPosition() const { return position; }
 
     libsgp4::SGP4 getSGP4() const { return sgp4; }
+    libsgp4::Tle getTle() const { return tle; }
 
     void step(float delta_time);
 };

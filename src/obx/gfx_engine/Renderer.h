@@ -45,7 +45,8 @@ class Renderer {
 
     bgfx::IndexBufferHandle indexBuffer;
     bgfx::VertexBufferHandle vertexBuffer;
-    bgfx::ProgramHandle program;
+    bgfx::ProgramHandle triangleMeshProgram;
+    bgfx::ProgramHandle lineMeshProgram;
     bgfx::UniformHandle sampler;
 
     std::vector<std::shared_ptr<Entity>> entities;
