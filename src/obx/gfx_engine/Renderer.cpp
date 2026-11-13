@@ -134,6 +134,9 @@ void obx::gfx_engine::Renderer::buildPrograms(std::string shaderDirectory) {
     }
 
     lineMeshProgram = bgfx::createProgram(lineMeshVertexShader, lineMeshFragmentShader, true);
+
+    // set uniforms
+    u_lineColor = bgfx::createUniform("u_lineColor", bgfx::UniformType::Vec4);
 }
 
 void obx::gfx_engine::Renderer::setupImGui() {
@@ -302,6 +305,10 @@ void obx::gfx_engine::Renderer::render() {
             // @todo add a better way to change colors or something
             bgfx::setState(BGFX_STATE_PT_LINESTRIP | BGFX_STATE_DEPTH_TEST_GREATER |
                            BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA);
+
+            // bind uniform
+            const float color[4] = {1.0, 1.0, 0.0, 1.0};
+            bgfx::setUniform(u_lineColor, color);
 
             // i think you keep it the same id to ensure the depth buffer is the same but don't
             // quote me on that (imgui is 255 btw)

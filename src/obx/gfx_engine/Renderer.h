@@ -48,6 +48,7 @@ class Renderer {
     bgfx::ProgramHandle triangleMeshProgram;
     bgfx::ProgramHandle lineMeshProgram;
     bgfx::UniformHandle sampler;
+    bgfx::UniformHandle u_lineColor;
 
     std::vector<std::shared_ptr<Entity>> entities;
     ImGuiRenderer imguiRenderer;

@@ -1,7 +1,10 @@
 $input a_position
 $output v_color0
 
+
 #include <bgfx_shader.sh>
+
+uniform vec4 u_lineColor;
 
 void main()
 {
@@ -10,5 +13,5 @@ void main()
         vec4(a_position, 1.0)
     );
 
-    v_color0 = vec4(0.0, 1.0, 0.0, 1.0);
+    v_color0 = u_lineColor;
 }
