@@ -454,9 +454,8 @@ int main() {
     };
 
     auto regeneratePasses = [&]() {
-        auto sgp = dragon->getSGP4();
-        passList = obx::physics::GeneratePassList(libsgp4::CoordGeodetic{latitude, longitude, 0.05},
-                                                  sgp, timeNow, timeNow.AddDays(7), 60);
+        passList =
+            dragon->generatePassList(libsgp4::CoordGeodetic{latitude, longitude, 0.05}, 7, 60.0f);
     };
 
     auto nextAos = [&](libsgp4::DateTime &out) {
@@ -472,7 +471,6 @@ int main() {
     // orbit mesh
     auto regenerateOrbitalTrajectory = [&]() {
         orbitPoints.clear();
-        auto sgp = dragon->getSGP4();
 
         const double meanMotionRevsPerDay = dragon->getTle().MeanMotion();
         const double orbitPeriodSeconds = 86400.0 / meanMotionRevsPerDay;
@@ -484,7 +482,7 @@ int main() {
             double t = orbitPeriodSeconds * double(i) / double(samples);
 
             libsgp4::DateTime sampleTime = timeNow.AddSeconds(t);
-            libsgp4::Eci eci = sgp.FindPosition(sampleTime);
+            libsgp4::Eci eci = dragon->getPosition(sampleTime);
             libsgp4::Vector pos = eci.Position();
 
             orbitPoints.push_back(

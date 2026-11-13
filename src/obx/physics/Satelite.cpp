@@ -17,3 +17,14 @@ void obx::physics::Satelite::step(float delta_time) {
     this->position = bx::Vec3{float(pos.x), float(pos.z), float(pos.y)};
     this->velocity = bx::Vec3{float(vel.x), float(vel.z), float(vel.y)};
 }
+
+std::list<obx::physics::PassDetails>
+obx::physics::Satelite::generatePassList(libsgp4::CoordGeodetic coordinate, int days, float dt) {
+
+    libsgp4::DateTime d = tle.Epoch().AddDays(days);
+    return obx::physics::GeneratePassList(coordinate, sgp4, tle.Epoch(), d, dt);
+}
+
+libsgp4::Eci obx::physics::Satelite::getPosition(libsgp4::DateTime time) {
+    return sgp4.FindPosition(time);
+}

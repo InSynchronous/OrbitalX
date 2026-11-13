@@ -1,7 +1,9 @@
 #pragma once
 
+#include "Passpredict.h"
 #include "bx/math.h"
 #include "libsgp4/SGP4.h"
+#include <list>
 
 namespace obx::physics {
 
@@ -24,8 +26,11 @@ class Satelite {
     bx::Vec3 getVelocity() const { return velocity; }
     bx::Vec3 getPosition() const { return position; }
 
-    libsgp4::SGP4 getSGP4() const { return sgp4; }
-    libsgp4::Tle getTle() const { return tle; }
+    libsgp4::Eci getPosition(libsgp4::DateTime time);
+
+    std::list<obx::physics::PassDetails> generatePassList(libsgp4::CoordGeodetic coordinate,
+                                                          int days, float dt);
+    const libsgp4::Tle &getTle() const { return tle; }
 
     void step(float delta_time);
 };
