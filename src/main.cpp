@@ -488,9 +488,9 @@ int main() {
     orbitalSatelites.emplace_back(
         createSateliteBodySGP4(renderer, simulation, tleTiangong, 0.0, 0.0, 1.0, 1.0));
 
-    auto moon = createSateliteBodyNewtonian(
-        renderer, simulation, bx::Vec3{-384'399'000.0f, 0.0f, 0.0f}, bx::Vec3{0, 0, -1018.0f},
-        7.342e22, moonRadiusKm, "assets/images/moon.jpg", 1.0, 1.0, 1.0, 1.0);
+    auto moon = createSateliteBodyNewtonian(renderer, simulation, bx::Vec3{-384399.0f, 0.0f, 0.0f},
+                                            bx::Vec3{0.0f, 0.0f, -1.018f}, 7.342e22, moonRadiusKm,
+                                            "assets/images/moon.jpg", 1.0, 1.0, 1.0, 1.0);
     orbitalSatelites.push_back(moon);
 
     auto warpTo = [&](const libsgp4::DateTime &t) {
@@ -708,8 +708,7 @@ int main() {
         // earthEntity->mesh->setPosition(bx::mul(earth->getPosition(), METERS_TO_KM));
 
         moon.sateliteEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
-        moon.sateliteEntity->mesh->setPosition(
-            bx::mul(moon.simulationEntity->getPosition(), METERS_TO_KM));
+        moon.sateliteEntity->mesh->setPosition(moon.simulationEntity->getPosition());
 
         for (auto &dragon : orbitalSatelites) {
             auto dragonKm = dragon.simulationEntity->getPosition();

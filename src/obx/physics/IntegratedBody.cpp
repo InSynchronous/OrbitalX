@@ -6,8 +6,8 @@ void obx::physics::IntegratedBody::applyForce(obx::physics::Force f) {
 }
 
 void obx::physics::IntegratedBody::step(float delta_time) {
-    // calculate force towards the Earth
-    // note the earth itself doesn't have a simulated body; this is just for earth orbit objects
+    // Calculate gravitational acceleration towards Earth.
+
     double r = bx::length(position);
 
     bx::Vec3 direction = bx::normalize(bx::mul(position, -1.0f));
@@ -16,7 +16,7 @@ void obx::physics::IntegratedBody::step(float delta_time) {
 
     Force gravity(bx::mul(direction, static_cast<float>(magnitude)));
 
-    this->applyForce(gravity);
+    applyForce(gravity);
 
     velocity = bx::add(velocity, bx::mul(acceleration, delta_time));
     position = bx::add(position, bx::mul(velocity, delta_time));

@@ -271,7 +271,7 @@ void obx::gfx_engine::Renderer::render() {
     }
     // 120 deg fov
     const float nearPlane = 0.01f; // 10 meters (km units)
-    const float farPlane = 500000.0f;
+    const float farPlane = 700000.0f;
 
     const bool homogeneousDepth = bgfx::getCaps()->homogeneousDepth;
 
