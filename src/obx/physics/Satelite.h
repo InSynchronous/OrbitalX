@@ -20,6 +20,8 @@ class Satelite {
   public:
     Satelite(libsgp4::Tle tle)
         : tle(tle), sgp4(tle), t(tle.Epoch()), position{0}, rotation{0}, velocity{0} {};
+    Satelite(libsgp4::Tle tle, libsgp4::DateTime t)
+        : tle(tle), sgp4(tle), t(t), position{0}, rotation{0}, velocity{0} {};
 
     libsgp4::DateTime t;
 

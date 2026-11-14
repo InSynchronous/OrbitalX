@@ -17,6 +17,7 @@ class Mesh {
     bx::Vec3 scale = {1.0f, 1.0f, 1.0f};
 
     MeshType meshType = MeshType::TRIANGLE_MESH;
+    float lineColor[4] = {0.0f, 1.0f, 1.0f, 0.0f};
 
     friend class Renderer;
 

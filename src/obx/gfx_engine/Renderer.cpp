@@ -307,8 +307,7 @@ void obx::gfx_engine::Renderer::render() {
                            BGFX_STATE_WRITE_RGB | BGFX_STATE_BLEND_ALPHA);
 
             // bind uniform
-            const float color[4] = {1.0, 1.0, 0.0, 1.0};
-            bgfx::setUniform(u_lineColor, color);
+            bgfx::setUniform(u_lineColor, mesh->lineColor);
 
             // i think you keep it the same id to ensure the depth buffer is the same but don't
             // quote me on that (imgui is 255 btw)

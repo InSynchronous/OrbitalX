@@ -8,7 +8,7 @@ void OrbitLineMesh::upload() {
     // gpu upload
     vertices.clear();
 
-    for (auto &point : points) {
+    for (auto &point : *points) {
         vertices.push_back(Vertex{point, {0, 0}});
     }
 
@@ -19,7 +19,8 @@ void OrbitLineMesh::upload() {
     // line segments through
 }
 
-void OrbitLineMesh::rebuild(bx::Vec3 position, bx::Vec3 rotation, std::vector<bx::Vec3> &points) {
+void OrbitLineMesh::rebuild(bx::Vec3 position, bx::Vec3 rotation,
+                            std::shared_ptr<std::vector<bx::Vec3>> points) {
     this->position = position;
     this->rotation = rotation;
     this->points = points;

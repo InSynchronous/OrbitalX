@@ -20,6 +20,7 @@
 #include <ctime>
 #include <iostream>
 #include <memory>
+#include <utility>
 #include <vector>
 
 namespace {
@@ -82,6 +83,8 @@ static float dragon_roll = 0.0f;
 static float dragon_pitch = 0.0f;
 static float dragon_yaw = 0.0f;
 
+static int satelite_index = 0;
+
 static libsgp4::DateTime timeNow;
 static libsgp4::DateTime simEpoch; // TLE epoch, never changes
 static double simSeconds = 0.0;    // seconds since simEpoch
@@ -90,7 +93,6 @@ static bool warpToPassOverRequested = false;
 
 static float latitude = 37.7749, longitude = -122.4194;
 std::list<obx::physics::PassDetails> passList;
-std::vector<bx::Vec3> orbitPoints;
 
 static obx::gfx_engine::Camera c = {
 
@@ -117,6 +119,16 @@ enum class CameraPosition {
 static CameraPosition selectedPosition = CameraPosition::Geostationary;
 static const char *positionNames[] = {"Custom",     "FollowDragon",  "LowEarthOrbit", "PolarNorth",
                                       "PolarSouth", "Geostationary", "DEBUG"};
+
+typedef struct {
+    std::shared_ptr<obx::physics::Satelite> sateliteSimulation;
+    std::shared_ptr<obx::gfx_engine::Entity> sateliteEntity;
+    std::shared_ptr<obx::gfx_engine::Entity> markerSphereEntity;
+    std::shared_ptr<obx::gfx_engine::Entity> orbitLineEntity;
+    std::shared_ptr<std::vector<bx::Vec3>> orbitPoints;
+} OrbitalSatelite;
+
+std::vector<OrbitalSatelite> orbitalSatelites;
 
 void setCameraSensor(CameraSensor sensor) {
     selectedSensor = sensor;
@@ -262,7 +274,9 @@ void imgui_handle() {
     ImGui::End();
 
     // Dragon Container:
-    ImGui::Begin("Dragon");
+    ImGui::Begin("Satelite Manager");
+    ImGui::Text("Selected Satelite:");
+    ImGui::InputInt("(index)", &satelite_index);
     ImGui::Text("Spacecraft Orientation");
     ImGui::InputFloat("Roll", &dragon_roll, 0.1f, 1.0f, "%.2f");
     ImGui::InputFloat("Pitch", &dragon_pitch, 0.1f, 1.0f, "%.2f");
@@ -304,6 +318,42 @@ std::shared_ptr<obx::gfx_engine::Entity> createCelestialBody(obx::gfx_engine::Re
     }
 
     return entity;
+}
+
+OrbitalSatelite createSateliteBody(obx::gfx_engine::Renderer &renderer,
+                                   obx::physics::NSateliteSim &simulation, libsgp4::Tle tle,
+                                   float r, float g, float b, float a) {
+
+    auto mesh = std::make_unique<obx::gfx_engine::ObjMesh>(
+        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, "assets/models/dragon.obj",
+        DRAGON_RENDER_SCALE);
+    auto dragonEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(mesh));
+    renderer.addEntity(dragonEntity);
+    auto fallback = generate_checkerboard(512, 256);
+    dragonEntity->loadTexture(fallback.data(), 512, 256);
+
+    // marker sphere
+    auto trackingMarkerMesh = std::make_unique<obx::gfx_engine::SphereMesh>(
+        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 16, 1.0f);
+    auto trackingMarkerEntity =
+        std::make_shared<obx::gfx_engine::Entity>(std::move(trackingMarkerMesh));
+    const std::vector<uint8_t> markerTexture = {
+        static_cast<uint8_t>(r * 255), static_cast<uint8_t>(g * 255), static_cast<uint8_t>(b * 255),
+        static_cast<uint8_t>(a * 255)};
+    trackingMarkerEntity->loadTexture(markerTexture.data(), 1, 1);
+    renderer.addEntity(trackingMarkerEntity);
+
+    auto dragon = std::make_shared<obx::physics::Satelite>(tle, timeNow);
+    simulation.addSatelite(dragon);
+
+    // orbit
+    auto orbitPoints = std::make_shared<std::vector<bx::Vec3>>();
+    auto orbitMesh = std::make_unique<obx::gfx_engine::OrbitLineMesh>(
+        bx::Vec3{0, 0, 0}, bx::Vec3{0, 0, 0}, orbitPoints, r, g, b, a);
+    auto orbitEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(orbitMesh));
+    renderer.addEntity(orbitEntity);
+
+    return {dragon, dragonEntity, trackingMarkerEntity, orbitEntity, orbitPoints};
 }
 
 // credit: wikipedia
@@ -375,25 +425,6 @@ int main() {
     auto moonEntity = createCelestialBody(renderer, {-384'399.0f, 0.0f, 0.0f}, moonRadiusKm,
                                           "assets/images/moon.jpg");
 
-    // Dragon spacecraft
-    // model is in meters, but simulation is in kilometers
-    auto mesh = std::make_unique<obx::gfx_engine::ObjMesh>(
-        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, "assets/models/dragon.obj",
-        DRAGON_RENDER_SCALE);
-    auto dragonEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(mesh));
-    renderer.addEntity(dragonEntity);
-    auto fallback = generate_checkerboard(512, 256);
-    dragonEntity->loadTexture(fallback.data(), 512, 256);
-
-    // marker sphere
-    auto trackingMarkerMesh = std::make_unique<obx::gfx_engine::SphereMesh>(
-        bx::Vec3{0.0f, 0.0f, 0.0f}, bx::Vec3{0.0f, 0.0f, 0.0f}, 16, 1.0f);
-    auto trackingMarkerEntity =
-        std::make_shared<obx::gfx_engine::Entity>(std::move(trackingMarkerMesh));
-    const std::vector<uint8_t> markerTexture = {0, 255, 0, 255};
-    trackingMarkerEntity->loadTexture(markerTexture.data(), 1, 1);
-    renderer.addEntity(trackingMarkerEntity);
-
     bx::Vec3 stationLocal = latLongToSphere(latitude, longitude, earthRadiusKm);
     float minElevRad = bx::toRad(10.0f);
     float slantKm = slantRangeKm(earthRadiusKm, issAltitudeKm, minElevRad);
@@ -416,15 +447,6 @@ int main() {
         7.342e22, bx::Vec3{-384'399'000.0f, 0.0f, 0.0f}, bx::Vec3{0, 0, 0},
         bx::Vec3{0, 0, -1018.0f});
 
-    libsgp4::Tle tle("A0882",
-                     "1 A0882U 26226A   26316.17460339  .00008107  00000-0  15334-3 0  9992",
-                     "2 A0882  51.6324 287.7668 0007312  16.4277 343.6947 15.49327857  6682");
-    auto dragon = std::make_shared<obx::physics::Satelite>(tle);
-
-    simEpoch = tle.Epoch();
-    simSeconds = 0.0;
-    timeNow = simEpoch;
-
     // Initialize simulation
     obx::physics::NBodySim planetSimulation;
 
@@ -432,7 +454,21 @@ int main() {
     planetSimulation.addBody(moon);
 
     obx::physics::NSateliteSim sateliteSimulation;
-    sateliteSimulation.addSatelite(dragon);
+    libsgp4::Tle tle("A0882",
+                     "1 A0882U 26226A   26317.40012392  .00008768  00000-0  16503-3 0  9993",
+                     "2 A0882  51.6324 281.7005 0007366  20.9423 339.1866 15.49350588  6871");
+    simEpoch = tle.Epoch();
+    simSeconds = 0.0;
+    timeNow = simEpoch;
+
+    orbitalSatelites.emplace_back(
+        createSateliteBody(renderer, sateliteSimulation, tle, 0.0, 1.0, 0.0, 1.0));
+
+    libsgp4::Tle tleTiangong(
+        "48274", "1 48274U 21035A   26317.54115615  .00018078  00000-0  20631-3 0  9992",
+        "2 48274  41.4674 134.3818 0004387 302.2376  57.8037 15.61773849316490");
+    orbitalSatelites.emplace_back(
+        createSateliteBody(renderer, sateliteSimulation, tleTiangong, 0.0, 0.0, 1.0, 1.0));
 
     auto warpTo = [&](const libsgp4::DateTime &t) {
         const double target =
@@ -454,8 +490,8 @@ int main() {
     };
 
     auto regeneratePasses = [&]() {
-        passList =
-            dragon->generatePassList(libsgp4::CoordGeodetic{latitude, longitude, 0.05}, 7, 60.0f);
+        passList = orbitalSatelites[satelite_index].sateliteSimulation->generatePassList(
+            libsgp4::CoordGeodetic{latitude, longitude, 0.05}, 7, 60.0f);
     };
 
     auto nextAos = [&](libsgp4::DateTime &out) {
@@ -469,41 +505,32 @@ int main() {
     };
 
     // orbit mesh
-    auto regenerateOrbitalTrajectory = [&]() {
-        orbitPoints.clear();
+    auto regenerateOrbitalTrajectories = [&]() {
+        for (auto &dragon : orbitalSatelites) {
+            dragon.orbitPoints->clear();
 
-        const double meanMotionRevsPerDay = dragon->getTle().MeanMotion();
-        const double orbitPeriodSeconds = 86400.0 / meanMotionRevsPerDay;
+            const double meanMotionRevsPerDay = dragon.sateliteSimulation->getTle().MeanMotion();
+            const double orbitPeriodSeconds = 86400.0 / meanMotionRevsPerDay;
 
-        const int samples = 180;
-        orbitPoints.reserve(samples + 1);
+            const int samples = 180;
+            dragon.orbitPoints->reserve(samples + 1);
 
-        for (int i = 0; i <= samples; ++i) {
-            double t = orbitPeriodSeconds * double(i) / double(samples);
+            for (int i = 0; i <= samples; ++i) {
+                double t = orbitPeriodSeconds * double(i) / double(samples);
 
-            libsgp4::DateTime sampleTime = timeNow.AddSeconds(t);
-            libsgp4::Eci eci = dragon->getPosition(sampleTime);
-            libsgp4::Vector pos = eci.Position();
+                libsgp4::DateTime sampleTime = timeNow.AddSeconds(t);
+                libsgp4::Eci eci = dragon.sateliteSimulation->getPosition(sampleTime);
+                libsgp4::Vector pos = eci.Position();
 
-            orbitPoints.push_back(
-                {static_cast<float>(pos.x), static_cast<float>(pos.z), static_cast<float>(pos.y)});
+                dragon.orbitPoints->push_back({static_cast<float>(pos.x), static_cast<float>(pos.z),
+                                               static_cast<float>(pos.y)});
+            }
+
+            dragon.orbitPoints->back() = dragon.orbitPoints->front();
         }
-
-        orbitPoints.back() = orbitPoints.front();
     };
 
-    regenerateOrbitalTrajectory();
-
-    auto orbitMesh = std::make_unique<obx::gfx_engine::OrbitLineMesh>(
-        bx::Vec3{0, 0, 0}, bx::Vec3{0, 0, 0}, orbitPoints);
-    // needed to access .rebuild
-    // @todo aquire a better solution than this
-    obx::gfx_engine::OrbitLineMesh *orbitMeshPtr = orbitMesh.get();
-
-    auto orbitEntity = std::make_shared<obx::gfx_engine::Entity>(std::move(orbitMesh));
-
-    renderer.addEntity(orbitEntity);
-
+    regenerateOrbitalTrajectories();
     regeneratePasses();
 
     float lastLat = latitude;
@@ -585,28 +612,29 @@ int main() {
 
         timeNow = simEpoch.AddSeconds(simSeconds);
 
-        const bx::Vec3 p = dragon->getPosition();
+        auto sat = orbitalSatelites[satelite_index];
 
         std::cout << obx::Color::Bold << obx::Color::Cyan << "[" << timeNow.ToString() << "]"
                   << obx::Color::Reset << " " << obx::Color::Bold << obx::Color::Magenta
                   << "(DRAGON)" << obx::Color::Reset << " " << obx::Color::Gray << "│ "
                   << obx::Color::Reset << obx::Color::Bold << obx::Color::Yellow << "X "
                   << obx::Color::Reset << std::fixed << std::setprecision(3)
-                  << dragon->getPosition().x << "  " << obx::Color::Bold << obx::Color::Green
-                  << "Y " << obx::Color::Reset << dragon->getPosition().y << "  "
-                  << obx::Color::Bold << obx::Color::Blue << "Z " << obx::Color::Reset
-                  << dragon->getPosition().z << '\n';
+                  << sat.sateliteSimulation->getPosition().x << "  " << obx::Color::Bold
+                  << obx::Color::Green << "Y " << obx::Color::Reset
+                  << sat.sateliteSimulation->getPosition().y << "  " << obx::Color::Bold
+                  << obx::Color::Blue << "Z " << obx::Color::Reset
+                  << sat.sateliteSimulation->getPosition().z << '\n';
 
         // offset by earth's position
-        const bx::Vec3 dragonKm = dragon->getPosition();
-        const float altKm = bx::length(dragonKm) - earthRadiusKm;
+        const bx::Vec3 satKm = sat.sateliteSimulation->getPosition();
+        const float altKm = bx::length(satKm) - earthRadiusKm;
 
         // follow dragon camera
         c.useLookDir = (selectedPosition == CameraPosition::FollowDragon);
 
         if (c.useLookDir) {
-            const bx::Vec3 radial = bx::normalize(dragonKm);
-            c.position = bx::add(dragonKm, bx::mul(radial, followDistanceKm));
+            const bx::Vec3 radial = bx::normalize(satKm);
+            c.position = bx::add(satKm, bx::mul(radial, followDistanceKm));
             c.lookDir = bx::mul(radial, -1.0f);
             c.up = {0.0f, 1.0f, 0.0f};
         }
@@ -657,34 +685,40 @@ int main() {
         moonEntity->mesh->setRotation({0.0f, moonAngle, 0.0f});
         moonEntity->mesh->setPosition(bx::mul(moon->getPosition(), METERS_TO_KM));
 
-        dragonEntity->mesh->setPosition(dragonKm);
-        dragonEntity->mesh->setRotation(
-            {bx::toRad(dragon_pitch), bx::toRad(-dragon_yaw), bx::toRad(dragon_roll)});
+        for (auto &dragon : orbitalSatelites) {
+            auto dragonKm = dragon.sateliteSimulation->getPosition();
+            dragon.sateliteEntity->mesh->setPosition(dragonKm);
+            dragon.sateliteEntity->mesh->setRotation(
+                {bx::toRad(dragon_pitch), bx::toRad(-dragon_yaw), bx::toRad(dragon_roll)});
 
-        float cameraDistance = bx::length(bx::sub(c.position, dragonKm));
-        int viewportWidth = 1280;
-        int viewportHeight = 720;
-        if (1) {
-            // if (cameraDistance > 100.0f && viewportHeight > 0) {
+            float cameraDistance = bx::length(bx::sub(c.position, dragonKm));
+            int viewportWidth = 1280;
+            int viewportHeight = 720;
+            if (1) {
+                // if (cameraDistance > 100.0f && viewportHeight > 0) {
 
-            float markerRadiusPixels = 3.0f;
-            float markerRadius = 2.0f * cameraDistance *
-                                 std::tan(bx::toRad(renderer.camera.fov) * 0.5f) *
-                                 markerRadiusPixels / static_cast<float>(viewportHeight);
-            trackingMarkerEntity->mesh->setPosition(dragonKm);
-            trackingMarkerEntity->mesh->setScale({markerRadius, markerRadius, markerRadius});
-        } else {
-            trackingMarkerEntity->mesh->setScale({0.0f, 0.0f, 0.0f});
+                float markerRadiusPixels = 3.0f;
+                float markerRadius = 2.0f * cameraDistance *
+                                     std::tan(bx::toRad(renderer.camera.fov) * 0.5f) *
+                                     markerRadiusPixels / static_cast<float>(viewportHeight);
+                dragon.markerSphereEntity->mesh->setPosition(dragonKm);
+                dragon.markerSphereEntity->mesh->setScale(
+                    {markerRadius, markerRadius, markerRadius});
+            } else {
+                dragon.markerSphereEntity->mesh->setScale({0.0f, 0.0f, 0.0f});
+            }
+
+            // regenerate
+            regenerateOrbitalTrajectories();
+
+            // @todo: figure out a better way than this for abstract classes
+            static_cast<obx::gfx_engine::OrbitLineMesh *>(dragon.orbitLineEntity->mesh.get())
+                ->rebuild(bx::Vec3{0, 0, 0}, bx::Vec3{0, 0, 0}, dragon.orbitPoints);
         }
 
         // for imgui
         moonx = moon->getPosition().x;
         moonz = moon->getPosition().z;
-
-        // regenerate
-        regenerateOrbitalTrajectory();
-        static_cast<obx::gfx_engine::OrbitLineMesh *>(orbitEntity->mesh.get())
-            ->rebuild(bx::Vec3{0, 0, 0}, bx::Vec3{0, 0, 0}, orbitPoints);
 
         renderer.render();
     }
