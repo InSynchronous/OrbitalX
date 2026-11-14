@@ -1,5 +1,6 @@
 #pragma once
 
+#include "ISimulated.h"
 #include "Passpredict.h"
 #include "bx/math.h"
 #include "libsgp4/SGP4.h"
@@ -7,21 +8,16 @@
 
 namespace obx::physics {
 
-class Satelite {
+class SGP4Body : public ISimulated {
   private:
-    bx::Vec3 position; // meters
-    bx::Vec3 rotation; // radians
-    bx::Vec3 velocity; // meters / second
     libsgp4::Tle tle;
     libsgp4::SGP4 sgp4;
 
     libsgp4::TimeSpan ToTimeSpan(double delta_seconds);
 
   public:
-    Satelite(libsgp4::Tle tle)
-        : tle(tle), sgp4(tle), t(tle.Epoch()), position{0}, rotation{0}, velocity{0} {};
-    Satelite(libsgp4::Tle tle, libsgp4::DateTime t)
-        : tle(tle), sgp4(tle), t(t), position{0}, rotation{0}, velocity{0} {};
+    SGP4Body(libsgp4::Tle tle) : tle(tle), sgp4(tle), t(tle.Epoch()), ISimulated() {};
+    SGP4Body(libsgp4::Tle tle, libsgp4::DateTime t) : tle(tle), sgp4(tle), t(t), ISimulated() {};
 
     libsgp4::DateTime t;
 
@@ -31,10 +27,10 @@ class Satelite {
     libsgp4::Eci getPosition(libsgp4::DateTime time);
 
     std::list<obx::physics::PassDetails> generatePassList(libsgp4::CoordGeodetic coordinate,
-                                                          int days, float dt);
+                                                          int days, float dt) override;
     const libsgp4::Tle &getTle() const { return tle; }
 
-    void step(float delta_time);
+    void step(float delta_time) override;
 };
 
 } // namespace obx::physics
