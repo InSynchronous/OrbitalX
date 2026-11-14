@@ -31,6 +31,8 @@ class SGP4Body : public ISimulated {
     const libsgp4::Tle &getTle() const { return tle; }
 
     void step(float delta_time) override;
+    double getOrbitalPeriodSeconds() override;
+    bx::Vec3 getPositionAt(libsgp4::DateTime time) override;
 };
 
 } // namespace obx::physics

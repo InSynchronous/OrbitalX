@@ -27,6 +27,10 @@ class ISimulated {
     bx::Vec3 getPosition() const { return position; }
 
     virtual void step(float delta_time) = 0;
+
+    virtual double getOrbitalPeriodSeconds() = 0;
+    virtual bx::Vec3 getPositionAt(libsgp4::DateTime time) = 0;
+
     // not all things can generate a pass list, temu fix for now is to just return nothing :P
     virtual std::list<obx::physics::PassDetails> generatePassList(libsgp4::CoordGeodetic coordinate,
                                                                   int days, float dt) {

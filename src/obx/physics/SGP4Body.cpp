@@ -28,3 +28,13 @@ obx::physics::SGP4Body::generatePassList(libsgp4::CoordGeodetic coordinate, int 
 libsgp4::Eci obx::physics::SGP4Body::getPosition(libsgp4::DateTime time) {
     return sgp4.FindPosition(time);
 }
+
+double obx::physics::SGP4Body::getOrbitalPeriodSeconds() {
+    return 86400.0 / this->tle.MeanMotion();
+}
+
+bx::Vec3 obx::physics::SGP4Body::getPositionAt(libsgp4::DateTime time) {
+    libsgp4::Vector pos = this->sgp4.FindPosition(time).Position();
+    return bx::Vec3{static_cast<float>(pos.x), static_cast<float>(pos.z),
+                    static_cast<float>(pos.y)};
+}
