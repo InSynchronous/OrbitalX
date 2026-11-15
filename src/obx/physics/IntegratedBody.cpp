@@ -7,41 +7,33 @@ void obx::physics::IntegratedBody::applyForce(obx::physics::Force f) {
 
 // runge kutta system rk4
 // https://www.youtube.com/watch?v=vNoFdtcPFdk
-void obx::physics::IntegratedBody::step(float delta_time) {
+void obx::physics::IntegratedBody::step(float delta_time) { stepD(delta_time); }
+void obx::physics::IntegratedBody::stepD(double dt) {
+    const V3 r0 = r_, v0 = v_;
 
-    auto gravity = [](bx::Vec3 p) -> bx::Vec3 {
-        double r = bx::length(p);
+    const V3 k1r = v0;
+    const V3 k1v = accel(r0, v0, cdAOverM, useJ2, useDrag);
 
-        double factor = -MU / (r * r * r);
+    const V3 k2r = v0 + k1v * (dt * 0.5);
+    const V3 k2v = accel(r0 + k1r * (dt * 0.5), k2r, cdAOverM, useJ2, useDrag);
 
-        return bx::mul(p, static_cast<float>(factor));
-    };
+    const V3 k3r = v0 + k2v * (dt * 0.5);
+    const V3 k3v = accel(r0 + k2r * (dt * 0.5), k3r, cdAOverM, useJ2, useDrag);
 
-    bx::Vec3 k1p = velocity;
-    bx::Vec3 k1v = gravity(position);
+    const V3 k4r = v0 + k3v * dt;
+    const V3 k4v = accel(r0 + k3r * dt, k4r, cdAOverM, useJ2, useDrag);
 
-    bx::Vec3 k2p = bx::add(velocity, bx::mul(k1v, delta_time * 0.5f));
-    bx::Vec3 k2v = gravity(bx::add(position, bx::mul(k1p, delta_time * 0.5f)));
+    r_ = r0 + (k1r + k2r * 2.0 + k3r * 2.0 + k4r) * (dt / 6.0);
+    v_ = v0 + (k1v + k2v * 2.0 + k3v * 2.0 + k4v) * (dt / 6.0);
 
-    bx::Vec3 k3p = bx::add(velocity, bx::mul(k2v, delta_time * 0.5f));
-    bx::Vec3 k3v = gravity(bx::add(position, bx::mul(k2p, delta_time * 0.5f)));
-
-    bx::Vec3 k4p = bx::add(velocity, bx::mul(k3v, delta_time));
-    bx::Vec3 k4v = gravity(bx::add(position, bx::mul(k3p, delta_time)));
-
-    // Update position
-    bx::Vec3 positionDelta =
-        bx::add(bx::add(k1p, bx::mul(k2p, 2.0f)), bx::add(bx::mul(k3p, 2.0f), k4p));
-
-    position = bx::add(position, bx::mul(positionDelta, delta_time / 6.0f));
-
-    bx::Vec3 velocityDelta =
-        bx::add(bx::add(k1v, bx::mul(k2v, 2.0f)), bx::add(bx::mul(k3v, 2.0f), k4v));
-
-    velocity = bx::add(velocity, bx::mul(velocityDelta, delta_time / 6.0f));
+    // keep the base class's float state current for everything that reads it
+    position = toBx(r_);
+    velocity = toBx(v_);
 }
 
 // Keplerian estimate
+// note: does not in fact account for orbital decay factors
+
 double obx::physics::IntegratedBody::getOrbitalPeriodSeconds() {
 
     double r = bx::length(position);
@@ -57,6 +49,7 @@ double obx::physics::IntegratedBody::getOrbitalPeriodSeconds() {
 }
 
 // another kepler aproximation
+// note: does not in fact account for orbital decay factors
 bx::Vec3 obx::physics::IntegratedBody::getPositionAt(libsgp4::DateTime time) {
     constexpr double MU = 398600.4418;
     constexpr double TWO_PI = 2.0 * M_PI;
