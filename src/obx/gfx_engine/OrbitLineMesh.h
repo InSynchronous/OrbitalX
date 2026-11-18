@@ -4,6 +4,7 @@
 #include "Vertex.h"
 #include "bx/math.h"
 #include <cstdint>
+#include <memory>
 #include <vector>
 
 namespace obx::gfx_engine {
@@ -23,7 +24,8 @@ class OrbitLineMesh : public Mesh {
     }
 
     OrbitLineMesh(bx::Vec3 position, bx::Vec3 rotation,
-                  std::shared_ptr<std::vector<bx::Vec3>> points, float r, float g, float b, float a)
+                  std::shared_ptr<std::vector<bx::Vec3>> points, float r,
+                  float g, float b, float a)
         : Mesh{position, rotation}, points(points) {
         this->meshType = MeshType::LINE_MESH;
         this->lineColor[0] = r;
