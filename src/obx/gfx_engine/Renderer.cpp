@@ -71,6 +71,7 @@ void obx::gfx_engine::Renderer::setupBGFX() {
     glfwGetFramebufferSize(info.window, &fbw, &fbh);
     init.swapChain.width = fbw > 0 ? static_cast<uint32_t>(fbw) : width;
     init.swapChain.height = fbh > 0 ? static_cast<uint32_t>(fbh) : height;
+    init.swapChain.formatDepthStencil = bgfx::TextureFormat::D32F;
 
     init.reset = BGFX_RESET_VSYNC;
 
@@ -246,6 +247,7 @@ void obx::gfx_engine::Renderer::render() {
         desc.ndt = info.nativeDisplay;
         desc.width = static_cast<uint32_t>(width);
         desc.height = static_cast<uint32_t>(height);
+        desc.formatDepthStencil = bgfx::TextureFormat::D32F;
         bgfx::reset(BGFX_RESET_VSYNC, &desc);
         resetWidth = width;
         resetHeight = height;
